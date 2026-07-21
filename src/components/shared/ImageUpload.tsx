@@ -27,9 +27,20 @@ interface ImageUploadProps {
   disabled?: boolean
   label?: string
   helperText?: React.ReactNode
+  /** Crop aspect ratio (width / height). Defaults to `1` (square) so
+   * existing callers are unaffected. Pass e.g. `1440 / 720` for a landscape
+   * banner crop matching the backend's Cloudinary transform profile. */
+  aspect?: number
 }
 
-export function ImageUpload({ value, onFileSelected, disabled, label, helperText }: ImageUploadProps) {
+export function ImageUpload({
+  value,
+  onFileSelected,
+  disabled,
+  label,
+  helperText,
+  aspect = 1,
+}: ImageUploadProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   // Tracks an explicit removal so the box doesn't fall back to showing
   // `value` (the original saved image) again — without this, clicking X
@@ -98,6 +109,15 @@ export function ImageUpload({ value, onFileSelected, disabled, label, helperText
 
   const displayUrl = removed ? null : previewUrl ?? value
 
+  // Preview box dimensions scale with `aspect` (width/height); defaults to
+  // the original fixed 10rem×10rem square so existing callers are unaffected.
+  const previewBoxStyle: React.CSSProperties =
+    aspect === 1
+      ? { width: "10rem", height: "10rem" }
+      : aspect > 1
+        ? { width: `${Math.min(10 * aspect, 24)}rem`, height: "10rem" }
+        : { width: "10rem", height: `${Math.min(10 / aspect, 24)}rem` }
+
   return (
     <div className="space-y-2 w-full">
       {label && <span className="text-sm font-medium text-foreground">{label}</span>}
@@ -110,7 +130,7 @@ export function ImageUpload({ value, onFileSelected, disabled, label, helperText
       />
       <div className="flex flex-col items-center justify-center">
         {displayUrl ? (
-          <div className="relative w-40 h-40 rounded-xl overflow-hidden border">
+          <div className="relative rounded-xl overflow-hidden border" style={previewBoxStyle}>
             <img src={displayUrl} alt="Uploaded Image" className="w-full h-full object-cover" />
             <button
               type="button"
@@ -140,7 +160,9 @@ export function ImageUpload({ value, onFileSelected, disabled, label, helperText
         )}
       </div>
       <p className="text-xs text-muted-foreground text-center">
-        Square image recommended (e.g. 800×800px). JPG, PNG or WebP, up to 5MB.
+        {aspect === 1
+          ? "Square image recommended (e.g. 800×800px). JPG, PNG or WebP, up to 5MB."
+          : `Landscape image recommended (${aspect.toFixed(2)}:1 aspect ratio). JPG, PNG or WebP, up to 5MB.`}
       </p>
       {helperText && <div className="text-xs text-muted-foreground">{helperText}</div>}
 
@@ -156,7 +178,7 @@ export function ImageUpload({ value, onFileSelected, disabled, label, helperText
                   image={cropSrc}
                   crop={crop}
                   zoom={zoom}
-                  aspect={1}
+                  aspect={aspect}
                   cropShape="rect"
                   showGrid
                   onCropChange={setCrop}

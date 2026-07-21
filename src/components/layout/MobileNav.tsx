@@ -12,6 +12,7 @@ import {
   ClipboardList,
   CreditCard,
   FileText,
+  GalleryHorizontal,
   Image,
   LayoutDashboard,
   MessageCircleQuestion,
@@ -47,6 +48,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   ClipboardList,
   CreditCard,
   FileText,
+  GalleryHorizontal,
   Image,
   LayoutDashboard,
   MessageCircleQuestion,
@@ -83,6 +85,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { id: "categories", label: "Laundry Categories", href: "/laundry-categories", icon: "Tags" },
       { id: "vendorServices", label: "Service Approvals", href: "/vendor-services", icon: "ClipboardCheck" },
       { id: "coupons", label: "Coupons", href: "/coupons", icon: "Ticket" },
+      { id: "banners", label: "Banners", href: "/banners", icon: "GalleryHorizontal" },
     ],
   },
   {

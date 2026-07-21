@@ -49,7 +49,7 @@ import {
   getCoupons,
   updateCoupon,
 } from "@/services/coupons.service"
-import type { Coupon, DiscountType } from "@/types"
+import type { Coupon, DiscountType, UpdateCouponPayload } from "@/types"
 
 type CouponForm = {
   code: string
@@ -58,7 +58,10 @@ type CouponForm = {
   discountValue: string
   minOrderAmount: string
   maxDiscount: string
+  usageLimit: string
   perUserLimit: string
+  validFrom: string
+  validUntil: string
   isActive: boolean
 }
 
@@ -81,6 +84,17 @@ function getErrorMessage(error: unknown) {
   return "Something went wrong"
 }
 
+/** Converts an ISO datetime string to the `YYYY-MM-DDTHH:mm` shape the
+ * native `<input type="datetime-local">` expects, in the browser's local
+ * timezone (matching how the input displays/edits the value). */
+function toDatetimeLocalValue(iso: string | null | undefined): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 function createInitialForm(coupon?: Coupon | null): CouponForm {
   return {
     code: coupon?.code ?? "",
@@ -89,7 +103,10 @@ function createInitialForm(coupon?: Coupon | null): CouponForm {
     discountValue: coupon?.discountValue != null ? String(coupon.discountValue) : "",
     minOrderAmount: coupon?.minOrderAmount != null ? String(coupon.minOrderAmount) : "",
     maxDiscount: coupon?.maxDiscount != null ? String(coupon.maxDiscount) : "",
+    usageLimit: coupon?.usageLimit != null ? String(coupon.usageLimit) : "",
     perUserLimit: coupon?.perUserLimit != null ? String(coupon.perUserLimit) : "1",
+    validFrom: toDatetimeLocalValue(coupon?.validFrom),
+    validUntil: toDatetimeLocalValue(coupon?.validUntil),
     isActive: coupon?.isActive ?? true,
   }
 }
@@ -117,7 +134,7 @@ export default function CouponsPage() {
 
   const createMutation = useMutation({ mutationFn: createCoupon })
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CouponForm> }) =>
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateCouponPayload }) =>
       updateCoupon(id, payload),
   })
   const deleteMutation = useMutation({
@@ -169,7 +186,20 @@ export default function CouponsPage() {
 
     const minOrderAmount = form.minOrderAmount.trim() === "" ? undefined : Number(form.minOrderAmount)
     const maxDiscount = form.maxDiscount.trim() === "" ? undefined : Number(form.maxDiscount)
+    const usageLimit = form.usageLimit.trim() === "" ? undefined : Number(form.usageLimit)
     const perUserLimit = form.perUserLimit.trim() === "" ? undefined : Number(form.perUserLimit)
+
+    if (usageLimit !== undefined && (!Number.isInteger(usageLimit) || usageLimit < 1)) {
+      toast.error("Total usage limit must be a whole number of at least 1")
+      return
+    }
+
+    const validFrom = form.validFrom ? new Date(form.validFrom).toISOString() : undefined
+    const validUntil = form.validUntil ? new Date(form.validUntil).toISOString() : undefined
+    if (validFrom && validUntil && new Date(validFrom) > new Date(validUntil)) {
+      toast.error("Valid From must be before Valid Until")
+      return
+    }
 
     setIsSaving(true)
     try {
@@ -183,7 +213,10 @@ export default function CouponsPage() {
             discountValue,
             minOrderAmount,
             maxDiscount,
+            usageLimit,
             perUserLimit,
+            validFrom,
+            validUntil,
             isActive: form.isActive,
           },
         })
@@ -196,7 +229,10 @@ export default function CouponsPage() {
           discountValue,
           minOrderAmount,
           maxDiscount,
+          usageLimit,
           perUserLimit,
+          validFrom,
+          validUntil,
         })
         toast.success("Coupon created")
       }
@@ -375,15 +411,48 @@ export default function CouponsPage() {
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="coupon-per-user-limit">Uses Per Customer</Label>
-              <Input
-                id="coupon-per-user-limit"
-                type="number"
-                min={1}
-                value={form.perUserLimit}
-                onChange={(e) => setForm((f) => ({ ...f, perUserLimit: e.target.value }))}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="coupon-per-user-limit">Uses Per Customer</Label>
+                <Input
+                  id="coupon-per-user-limit"
+                  type="number"
+                  min={1}
+                  value={form.perUserLimit}
+                  onChange={(e) => setForm((f) => ({ ...f, perUserLimit: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="coupon-usage-limit">Total Usage Limit</Label>
+                <Input
+                  id="coupon-usage-limit"
+                  type="number"
+                  min={1}
+                  value={form.usageLimit}
+                  onChange={(e) => setForm((f) => ({ ...f, usageLimit: e.target.value }))}
+                  placeholder="Unlimited if empty"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="coupon-valid-from">Valid From</Label>
+                <Input
+                  id="coupon-valid-from"
+                  type="datetime-local"
+                  value={form.validFrom}
+                  onChange={(e) => setForm((f) => ({ ...f, validFrom: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="coupon-valid-until">Valid Until</Label>
+                <Input
+                  id="coupon-valid-until"
+                  type="datetime-local"
+                  value={form.validUntil}
+                  onChange={(e) => setForm((f) => ({ ...f, validUntil: e.target.value }))}
+                />
+              </div>
             </div>
             {editingCoupon && (
               <div className="flex items-center justify-between rounded-lg border px-4 py-3">

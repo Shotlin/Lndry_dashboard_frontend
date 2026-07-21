@@ -2,6 +2,7 @@
 export interface Banner {
   id: string
   title: string
+  subtitle: string | null
   image_url: string
   banner_type: "carousel" | "popup" | "announcement"
   link_type: "category" | "product" | "url" | "none"
@@ -17,6 +18,7 @@ export interface Banner {
 /** Create banner payload — camelCase (backend schema expects camelCase) */
 export interface CreateBannerPayload {
   title: string
+  subtitle?: string
   imageUrl: string
   bannerType?: "carousel" | "popup" | "announcement"
   linkType?: "category" | "product" | "url" | "none"
@@ -26,8 +28,13 @@ export interface CreateBannerPayload {
   endDate?: string
 }
 
-/** Update banner payload */
-export type UpdateBannerPayload = Partial<CreateBannerPayload>
+/** Update banner payload — all fields optional (partial update); startDate/endDate
+ * additionally accept an explicit `null` to clear a previously-set schedule
+ * bound (distinct from `undefined`, which leaves the existing value untouched). */
+export interface UpdateBannerPayload extends Partial<Omit<CreateBannerPayload, "startDate" | "endDate">> {
+  startDate?: string | null
+  endDate?: string | null
+}
 
 /** Reorder payload */
 export interface ReorderBannersPayload {

@@ -130,7 +130,7 @@ export const bannerFormSchema = z.object({
   imageUrl: z.string().url("Must be a valid image URL"),
   linkType: z.enum(["none", "product", "category", "url"]),
   linkValue: z.string().optional(),
-  bannerType: z.enum(["carousel", "popup", "strip"]).default("carousel"),
+  bannerType: z.enum(["carousel", "popup", "announcement"]).default("carousel"),
   isActive: z.boolean().default(true),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
