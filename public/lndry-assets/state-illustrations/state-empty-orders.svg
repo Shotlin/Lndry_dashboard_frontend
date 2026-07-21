@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">LNDRY empty orders</title>
+  <desc id="desc">An empty violet laundry basket with a hanger and careline seam.</desc>
+  <defs>
+    <linearGradient id="basket" x1="68" y1="96" x2="244" y2="202" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#887CF6"/>
+      <stop offset="1" stop-color="#5046C8"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="159" cy="204" rx="108" ry="17" fill="#EAE8FF"/>
+  <path d="M63 105h194l-20 89H83l-20-89Z" fill="url(#basket)" stroke="#5046C8" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M88 105c5-32 25-50 55-50h34c30 0 50 18 55 50" stroke="#6C63E8" stroke-width="12" stroke-linecap="round"/>
+  <path d="M105 130v38M134 130v38M164 130v38M194 130v38M223 130v38" stroke="#D8D4FF" stroke-width="7" stroke-linecap="round"/>
+  <path d="M93 105v46c0 15 10 25 25 25h24" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <path d="M93 119v-6M93 140v-6M151 176h6" stroke="#EAE8FF" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="142" cy="176" r="5" fill="#0FB5A6"/>
+  <path d="M153 35c0-11 14-17 21-8 5 7 0 14-8 17v9l36 21H119l34-20" stroke="#6C63E8" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

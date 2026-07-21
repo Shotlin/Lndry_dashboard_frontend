@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">LNDRY payment failure</title>
+  <desc id="desc">A secure payment card interrupted by a small error badge.</desc>
+  <defs>
+    <linearGradient id="card" x1="55" y1="62" x2="254" y2="190" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#887CF6"/>
+      <stop offset="1" stop-color="#5046C8"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="158" cy="203" rx="108" ry="17" fill="#EAE8FF"/>
+  <rect x="52" y="60" width="208" height="132" rx="25" fill="url(#card)"/>
+  <rect x="52" y="88" width="208" height="25" fill="#241D68" fill-opacity=".48"/>
+  <rect x="78" y="135" width="45" height="30" rx="7" fill="#EAE8FF"/>
+  <path d="M141 148h42M141 161h25" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <path d="M79 135v10c0 12 8 20 20 20h24" stroke="#6C63E8" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M79 128v-4M79 153v-4" stroke="#887CF6" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="123" cy="165" r="4.5" fill="#0FB5A6"/>
+  <circle cx="238" cy="70" r="35" fill="#FFF0F2" stroke="#D94557" stroke-width="4"/>
+  <path d="m225 57 26 26M251 57l-26 26" stroke="#D94557" stroke-width="6" stroke-linecap="round"/>
+</svg>

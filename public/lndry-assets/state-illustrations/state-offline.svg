@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">LNDRY offline state</title>
+  <desc id="desc">A folded shirt and disconnected careline signal.</desc>
+  <defs>
+    <linearGradient id="cloth" x1="70" y1="73" x2="240" y2="203" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F6FF"/>
+      <stop offset="1" stop-color="#D8D4FF"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="202" rx="105" ry="17" fill="#EAE8FF"/>
+  <rect x="72" y="101" width="176" height="92" rx="22" fill="url(#cloth)" stroke="#6C63E8" stroke-width="4"/>
+  <path d="M105 101 127 78h66l22 23-24 22h-62l-24-22Z" fill="#887CF6" stroke="#6C63E8" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m127 78 33 32 33-32" stroke="white" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M95 141v21c0 12 8 20 20 20h20" stroke="#6C63E8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M95 132v-5M95 174v-5M145 182h5" stroke="#887CF6" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="135" cy="182" r="5" fill="#0FB5A6"/>
+  <path d="M112 54c28-27 68-27 96 0M127 69c20-18 46-18 66 0M145 84c9-8 21-8 30 0" stroke="#6C63E8" stroke-width="6" stroke-linecap="round"/>
+  <path d="m105 42 111 91" stroke="#D94557" stroke-width="7" stroke-linecap="round"/>
+</svg>

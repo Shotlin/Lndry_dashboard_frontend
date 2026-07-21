@@ -1,0 +1,197 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Sora:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* ── Shadcn base variables (LNDRY Indigo theme from mockups) ── */
+    --background: 240 10% 97%; /* page bg #F7F7FB */
+    --foreground: 222 47% 11%; /* ink #0F172A */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 243 75% 59%; /* Indigo Blue #6366f1 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%; /* soft slate #f1f5f9 */
+    --secondary-foreground: 243 75% 59%;
+    --muted: 215 16% 47%; /* muted #64748B */
+    --muted-foreground: 215 16% 47%;
+    --accent: 240 10% 97%; /* page bg tint */
+    --accent-foreground: 243 75% 59%;
+    --destructive: 354 70% 53%; /* danger Red #EF4444 */
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 8% 92%; /* card border #E8E8EF */
+    --input: 240 8% 92%;
+    --ring: 243 75% 59%;
+    --chart-1: 243 75% 59%; /* indigo primary */
+    --chart-2: 245 58% 51%; /* darker indigo */
+    --chart-3: 240 5% 90%; /* soft grey */
+    --chart-4: 354 70% 53%;
+    --chart-5: 174 85% 38%;
+    --radius: 0.5rem;
+
+    /* ── Brand Colors (direct hex — Indigo scale) ── */
+    --brand-50: #EEF2FF;
+    --brand-100: #E0E7FF;
+    --brand-200: #C7D2FE;
+    --brand-300: #A5B4FC;
+    --brand-400: #818CF8;
+    --brand-500: #6366F1;
+    --brand-600: #4F46E5;
+    --brand-700: #4338CA;
+    --brand-800: #3730A3;
+    --brand-900: #312E81;
+
+    /* ── Semantic ── */
+    --success: #10B981;
+    --success-bg: #ECFDF5;
+    --warning: #F59E0B;
+    --warning-bg: #FEF3C7;
+    --danger: #EF4444;
+    --danger-bg: #FEF2F2;
+    --info: #6366F1;
+    --info-bg: #EEF2FF;
+
+    /* ── Surface ── */
+    --surface-bg: #F8FAFC;
+    --surface-card: #FFFFFF;
+    --surface-sidebar: #0F172A;
+
+    /* ── Shadows (subtle, matching mockup cards) ── */
+    --shadow-xs: 0 1px 2px rgba(42, 36, 95, 0.03);
+    --shadow-sm: 0 1px 3px rgba(42, 36, 95, 0.04), 0 1px 2px rgba(42, 36, 95, 0.03);
+    --shadow-md: 0 3px 10px rgba(42, 36, 95, 0.045);
+    --shadow-lg: 0 8px 24px rgba(42, 36, 95, 0.06);
+    --shadow-xl: 0 16px 32px rgba(42, 36, 95, 0.08);
+
+    /* ── Layout ── */
+    --sidebar-width: 244px;
+    --sidebar-collapsed: 72px;
+    --header-height: 64px;
+  }
+
+  .dark {
+    /* ── Dark mode ── */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 47% 16%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 222 47% 16%;
+    --muted-foreground: 217.2 32.6% 75%;
+    --accent: 222 47% 16%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 354 70% 53%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 47% 16%;
+    --input: 222 47% 16%;
+    --ring: 243 75% 59%;
+    --chart-1: 243 75% 59%;
+    --chart-2: 245 58% 51%;
+    --chart-3: 240 5% 90%;
+    --chart-4: 354 70% 53%;
+    --chart-5: 174 85% 38%;
+
+    --brand-50: rgba(99, 102, 241, 0.12);
+    --brand-100: rgba(99, 102, 241, 0.2);
+    --brand-500: #6366F1;
+
+    --success: #10B981;
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --warning: #F59E0B;
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --danger: #EF4444;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --info: #6366F1;
+    --info-bg: rgba(99, 102, 241, 0.15);
+
+    --surface-bg: #0F172A;
+    --surface-card: hsl(222 47% 11%);
+    --surface-sidebar: hsl(222 47% 8%);
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.3);
+    --shadow-xl: 0 20px 25px rgba(0,0,0,0.45), 0 10px 10px rgba(0,0,0,0.3);
+  }
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* ── Shimmer skeleton animation ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--border)) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── Stat card primary gradient (LNDRY Indigo) ── */
+.stat-card-primary {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+}
+
+/* ── Focus ring ── */
+*:focus-visible {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+
+/* ── Decorative top-right gradient (visible on all dashboard pages) ── */
+.page-gradient-decoration {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 600px;
+  height: 200px;
+  background: radial-gradient(ellipse at top right, rgba(99, 102, 241, 0.06) 0%, rgba(129, 140, 248, 0.03) 40%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Card standard from mockups ── */
+.lndry-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+/* ── Table header text matching mockup indigo ── */
+.lndry-th {
+  color: #6366F1;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 12px 8px;
+}
+
+/* ── Status badge utilities ── */
+.badge-success { background: #ECFDF5; color: #047857; }
+.badge-warning { background: #FEF3C7; color: #B45309; }
+.badge-danger { background: #FEF2F2; color: #B91C1C; }
+.badge-info { background: #EFF6FF; color: #1D4ED8; }
+.badge-neutral { background: #F1F1F5; color: #64748B; }

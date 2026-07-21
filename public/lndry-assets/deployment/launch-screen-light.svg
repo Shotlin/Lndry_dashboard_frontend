@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844">
+  <defs>
+    <radialGradient id="r" cx="0" cy="0" r="1" gradientTransform="translate(310 130) rotate(130) scale(270 250)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDD9FF" stop-opacity=".78"/>
+      <stop offset="1" stop-color="#F8F8FD" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="g" x1="136" y1="300" x2="258" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#887CF6"/>
+      <stop offset="1" stop-color="#5046C8"/>
+    </linearGradient>
+  </defs>
+  <rect width="390" height="844" fill="#F8F8FD"/>
+  <rect width="390" height="844" fill="url(#r)"/>
+  <rect x="135" y="321" width="120" height="120" rx="30" fill="url(#g)"/>
+  <g fill="none" stroke="#FFF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M176 343v57c0 10 6 15 16 15h28"/>
+    <path d="M166 356h20M166 369h20M166 382h20"/>
+  </g>
+  <circle cx="224" cy="416" r="5" fill="#0FB5A6"/>
+  <text x="195" y="482" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#080F14">LNDRY</text>
+  <text x="195" y="510" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#5E687A">Care, collected and returned.</text>
+</svg>

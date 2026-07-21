@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">LNDRY outside service area</title>
+  <desc id="desc">A violet location pin beside a folded shirt and a dashed careline boundary.</desc>
+  <defs>
+    <linearGradient id="pin" x1="108" y1="39" x2="182" y2="151" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#887CF6"/>
+      <stop offset="1" stop-color="#5046C8"/>
+    </linearGradient>
+    <linearGradient id="shirt" x1="160" y1="102" x2="259" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4F2FF"/>
+      <stop offset="1" stop-color="#D8D4FF"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="145" cy="199" rx="112" ry="18" fill="#EAE8FF"/>
+  <path d="M140 38c-31.5 0-57 25.5-57 57 0 40.5 57 93 57 93s57-52.5 57-93c0-31.5-25.5-57-57-57Z" fill="url(#pin)"/>
+  <circle cx="140" cy="94" r="22" fill="white"/>
+  <circle cx="140" cy="94" r="10" fill="#EAE8FF"/>
+  <path d="M174 126 205 111l26 13 30 61H160l14-59Z" fill="url(#shirt)" stroke="#6C63E8" stroke-width="4" stroke-linejoin="round"/>
+  <path d="m205 111-12 24 12 10 12-10-12-24Z" fill="white" stroke="#6C63E8" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M170 185h88" stroke="#6C63E8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M45 201h34c14 0 22-8 22-22v-9" stroke="#6C63E8" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 9"/>
+  <circle cx="45" cy="201" r="5" fill="#0FB5A6"/>
+  <path d="M256 73c13 4 22 16 22 30M272 72l8 3-3 8" stroke="#887CF6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
