@@ -15,20 +15,29 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Renders the user's crop selection to a fixed-size square JPEG File,
- * ready to upload — this is what guarantees every category/subcategory
- * image ends up the same accurate dimensions regardless of what the
- * admin originally picked. */
+/** Renders the user's crop selection to a fixed-size JPEG File at the same
+ * aspect ratio the crop dialog was locked to, ready to upload. Square
+ * callers (aspect 1, the original use case — category/subcategory images)
+ * get the previous 800×800 output unchanged. Non-square callers (e.g.
+ * banners at aspect 2) get a canvas sized to match that ratio exactly —
+ * previously this always rendered into an 800×800 square canvas regardless
+ * of `aspect`, silently squashing every landscape crop into a square and
+ * then relying on the backend's Cloudinary transform to force-crop it back
+ * to 2:1, which is what was cutting off banner content. */
 export async function cropImageToFile(
   imageSrc: string,
   crop: PixelCrop,
   fileName: string,
-  outputSize = 800
+  aspect = 1
 ): Promise<File> {
+  const baseSize = 800
+  const outputWidth = aspect >= 1 ? Math.round(baseSize * aspect) : baseSize
+  const outputHeight = aspect >= 1 ? baseSize : Math.round(baseSize / aspect)
+
   const image = await loadImage(imageSrc)
   const canvas = document.createElement("canvas")
-  canvas.width = outputSize
-  canvas.height = outputSize
+  canvas.width = outputWidth
+  canvas.height = outputHeight
   const ctx = canvas.getContext("2d")
   if (!ctx) throw new Error("Canvas is not supported in this browser")
 
@@ -40,8 +49,8 @@ export async function cropImageToFile(
     crop.height,
     0,
     0,
-    outputSize,
-    outputSize
+    outputWidth,
+    outputHeight
   )
 
   const blob = await new Promise<Blob | null>((resolve) =>

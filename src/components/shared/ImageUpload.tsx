@@ -89,7 +89,7 @@ export function ImageUpload({
     if (!cropSrc || !croppedAreaPixels) return
     setIsCropping(true)
     try {
-      const croppedFile = await cropImageToFile(cropSrc, croppedAreaPixels, cropFileName)
+      const croppedFile = await cropImageToFile(cropSrc, croppedAreaPixels, cropFileName, aspect)
       if (previewUrl) URL.revokeObjectURL(previewUrl)
       setPreviewUrl(URL.createObjectURL(croppedFile))
       setRemoved(false)
@@ -162,7 +162,7 @@ export function ImageUpload({
       <p className="text-xs text-muted-foreground text-center">
         {aspect === 1
           ? "Square image recommended (e.g. 800×800px). JPG, PNG or WebP, up to 5MB."
-          : `Landscape image recommended (${aspect.toFixed(2)}:1 aspect ratio). JPG, PNG or WebP, up to 5MB.`}
+          : `Design your source image at exactly ${Math.round(720 * aspect)}×720px (${aspect.toFixed(2)}:1) so no cropping is needed — JPG, PNG or WebP, up to 5MB.`}
       </p>
       {helperText && <div className="text-xs text-muted-foreground">{helperText}</div>}
 
@@ -198,6 +198,13 @@ export function ImageUpload({
                   className="w-full accent-brand-500"
                 />
               </div>
+              {croppedAreaPixels && (
+                <p className="text-xs text-muted-foreground text-center pt-1">
+                  Selection: {Math.round(croppedAreaPixels.width)} ×{" "}
+                  {Math.round(croppedAreaPixels.height)}px — nothing outside
+                  this frame is saved.
+                </p>
+              )}
             </>
           )}
           <DialogFooter>
