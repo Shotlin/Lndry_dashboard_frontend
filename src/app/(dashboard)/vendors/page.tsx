@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { useSearchFilter } from "@/hooks/useSearchFilter"
 import { useStatusTabs } from "@/hooks/useStatusTabs"
 import { useCsvExport } from "@/hooks/useCsvExport"
@@ -33,7 +34,10 @@ function getVendorStatusInfo(v: any) {
   if (!v.is_active) {
     return { label: "Inactive", bg: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" }
   }
-  if (maxCapacity === 0 || utilization >= 0.9) {
+  if (maxCapacity === 0) {
+    return { label: "No capacity set", bg: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" }
+  }
+  if (utilization >= 0.9) {
     return { label: "Near capacity", bg: "bg-amber-50 text-amber-700 border-amber-100", dot: "bg-amber-500" }
   }
   return { label: "Active", bg: "bg-emerald-50 text-emerald-700 border-emerald-100", dot: "bg-emerald-500" }
@@ -61,6 +65,7 @@ function HighlightText({ text, highlight }: { text: string; highlight: string })
 }
 
 function VendorsPageInner() {
+  const router = useRouter()
   const { search, setSearch, debouncedSearch } = useSearchFilter({ delay: 300 })
   const { activeTab, setActiveTab } = useStatusTabs({ defaultTab: "active" })
   const { exportToCsv, isExporting } = useCsvExport()
@@ -318,6 +323,7 @@ function VendorsPageInner() {
                     return (
                       <tr
                         key={v.id}
+                        onClick={() => router.push(`/vendors/${v.id}`)}
                         className="hover:bg-slate-50/70 active:bg-slate-100/50 transition-all duration-150 cursor-pointer text-sm"
                       >
                         <td className="py-4 px-4">
