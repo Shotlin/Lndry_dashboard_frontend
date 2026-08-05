@@ -18,6 +18,7 @@ import {
   Tags,
   Ticket,
   Users,
+  Users2,
   type LucideIcon,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -58,6 +59,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Tags,
   Ticket,
   Users,
+  Users2,
 }
 
 const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
@@ -71,6 +73,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { id: "orders", label: "Orders", href: "/orders", badgeKey: "pendingOrders", icon: "ClipboardList" },
       { id: "exceptions", label: "Exceptions", href: "/exceptions", badgeKey: "exceptionsCount", icon: "AlertTriangle" },
       { id: "categories", label: "Categories", href: "/laundry-categories", icon: "Tags" },
+      { id: "customerSegments", label: "Customer Segments", href: "/customer-segments", icon: "Users2" },
       { id: "coupons", label: "Coupons", href: "/coupons", icon: "Ticket" },
       { id: "banners", label: "Banners", href: "/banners", icon: "GalleryHorizontal" },
       { id: "vendorServices", label: "Service Approvals", href: "/vendor-services", icon: "ClipboardCheck" },
