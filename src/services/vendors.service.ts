@@ -202,3 +202,35 @@ export async function reviewCapacityRequest(
   )
   return data.data
 }
+
+export async function adminSetDailyCapacity(id: string, maxOrdersPerDay: number): Promise<{ daily_limit: number }> {
+  const { data } = await api.put<ApiResponse<{ daily_limit: number }>>(`/vendors/admin/${id}/capacity`, {
+    max_orders_per_day: maxOrdersPerDay,
+  })
+  return data.data
+}
+
+export interface PickupSlotPayload {
+  day_of_week: number
+  start: string
+  end: string
+  max_orders?: number
+}
+
+export async function adminCreatePickupSlot(id: string, payload: PickupSlotPayload) {
+  const { data } = await api.post(`/vendors/admin/${id}/slots`, payload)
+  return data.data
+}
+
+export async function adminUpdatePickupSlot(
+  id: string,
+  slotId: string,
+  payload: { max_orders?: number; is_active?: boolean; start?: string; end?: string }
+) {
+  const { data } = await api.patch(`/vendors/admin/${id}/slots/${slotId}`, payload)
+  return data.data
+}
+
+export async function adminDeletePickupSlot(id: string, slotId: string): Promise<void> {
+  await api.delete(`/vendors/admin/${id}/slots/${slotId}`)
+}

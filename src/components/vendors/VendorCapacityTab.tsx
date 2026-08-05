@@ -1,11 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle, Plus, Pencil, Trash2 } from "lucide-react"
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,15 +27,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { useVendorCapacity, useReviewCapacityRequest } from "@/hooks/useVendorCapacity"
+import {
+  useVendorCapacity,
+  useReviewCapacityRequest,
+  useSetDailyCapacity,
+  useCreatePickupSlot,
+  useUpdatePickupSlot,
+  useDeletePickupSlot,
+} from "@/hooks/useVendorCapacity"
+import type { VendorCapacity } from "@/services/vendors.service"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+type SlotRow = NonNullable<VendorCapacity["weekly_availability"]>[number]
 
 export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
   const { data: capacity, isLoading, isError } = useVendorCapacity(vendorId)
   const reviewRequest = useReviewCapacityRequest(vendorId)
+  const setCapacity = useSetDailyCapacity(vendorId)
+  const createSlot = useCreatePickupSlot(vendorId)
+  const updateSlot = useUpdatePickupSlot(vendorId)
+  const deleteSlot = useDeletePickupSlot(vendorId)
+
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [adminNote, setAdminNote] = useState("")
+  const [capacityInput, setCapacityInput] = useState("")
+  const [slotDialogOpen, setSlotDialogOpen] = useState(false)
+  const [editingSlot, setEditingSlot] = useState<SlotRow | null>(null)
+  const [slotForm, setSlotForm] = useState({ day_of_week: "1", start: "09:00", end: "18:00", max_orders: "10" })
+  const [deleteTarget, setDeleteTarget] = useState<SlotRow | null>(null)
 
   if (isLoading) {
     return (
@@ -78,6 +109,44 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
     )
   }
 
+  function submitCapacity() {
+    const parsed = parseInt(capacityInput, 10)
+    if (Number.isNaN(parsed) || parsed <= 0) return
+    setCapacity.mutate(parsed, { onSuccess: () => setCapacityInput("") })
+  }
+
+  function openAddSlot() {
+    setEditingSlot(null)
+    setSlotForm({ day_of_week: "1", start: "09:00", end: "18:00", max_orders: "10" })
+    setSlotDialogOpen(true)
+  }
+
+  function openEditSlot(slot: SlotRow) {
+    setEditingSlot(slot)
+    setSlotForm({
+      day_of_week: String(slot.day_of_week),
+      start: slot.start_time.slice(0, 5),
+      end: slot.end_time.slice(0, 5),
+      max_orders: String(slot.max_orders),
+    })
+    setSlotDialogOpen(true)
+  }
+
+  function submitSlot() {
+    const maxOrders = parseInt(slotForm.max_orders, 10) || 1
+    if (editingSlot) {
+      updateSlot.mutate(
+        { slotId: editingSlot.id, payload: { start: slotForm.start, end: slotForm.end, max_orders: maxOrders } },
+        { onSuccess: () => setSlotDialogOpen(false) }
+      )
+    } else {
+      createSlot.mutate(
+        { day_of_week: Number(slotForm.day_of_week), start: slotForm.start, end: slotForm.end, max_orders: maxOrders },
+        { onSuccess: () => setSlotDialogOpen(false) }
+      )
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -86,9 +155,28 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
           <CardDescription>Maximum orders this vendor accepts per day</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-3xl font-bold text-foreground">
-            {capacity.daily_limit ?? "—"} <span className="text-sm font-normal text-muted-foreground">orders/day</span>
-          </p>
+          <div className="flex items-end justify-between gap-4">
+            <p className="text-3xl font-bold text-foreground">
+              {capacity.daily_limit ?? "—"} <span className="text-sm font-normal text-muted-foreground">orders/day</span>
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                placeholder="New value"
+                value={capacityInput}
+                onChange={(e) => setCapacityInput(e.target.value)}
+                className="h-9 w-28"
+              />
+              <Button
+                size="sm"
+                onClick={submitCapacity}
+                disabled={setCapacity.isPending || !capacityInput}
+              >
+                {setCapacity.isPending ? "Saving…" : "Set"}
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -132,8 +220,15 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly pickup/delivery slots</CardTitle>
-          <CardDescription>Per-slot order limits set by the vendor</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Weekly pickup/delivery slots</CardTitle>
+              <CardDescription>Per-slot order limits</CardDescription>
+            </div>
+            <Button onClick={openAddSlot} size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" /> Add slot
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {!capacity.weekly_availability || capacity.weekly_availability.length === 0 ? (
@@ -142,12 +237,24 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
             <div className="space-y-2">
               {capacity.weekly_availability.map((slot) => (
                 <div key={slot.id} className="flex items-center justify-between p-3 rounded-xl border bg-muted/20 text-sm">
-                  <span className="font-medium">{DAY_LABELS[slot.day_of_week]} · {slot.start_time}–{slot.end_time}</span>
-                  <div className="flex items-center gap-2">
+                  <span className="font-medium">{DAY_LABELS[slot.day_of_week]} · {slot.start_time.slice(0, 5)}–{slot.end_time.slice(0, 5)}</span>
+                  <div className="flex items-center gap-3">
                     <span className="text-muted-foreground">Max {slot.max_orders} orders</span>
-                    <Badge className={slot.is_active ? "bg-success-bg text-success border-0" : "bg-muted text-muted-foreground border-0"}>
-                      {slot.is_active ? "ACTIVE" : "INACTIVE"}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        checked={slot.is_active}
+                        onCheckedChange={(checked) => updateSlot.mutate({ slotId: slot.id, payload: { is_active: checked } })}
+                      />
+                      <Badge className={slot.is_active ? "bg-success-bg text-success border-0" : "bg-muted text-muted-foreground border-0"}>
+                        {slot.is_active ? "ACTIVE" : "INACTIVE"}
+                      </Badge>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => openEditSlot(slot)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-danger hover:text-danger" onClick={() => setDeleteTarget(slot)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -195,6 +302,74 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Add/edit slot */}
+      <Dialog open={slotDialogOpen} onOpenChange={setSlotDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingSlot ? "Edit slot" : "Add slot"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {!editingSlot && (
+              <div className="space-y-1">
+                <Label>Day</Label>
+                <Select value={slotForm.day_of_week} onValueChange={(v) => setSlotForm((f) => ({ ...f, day_of_week: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DAY_LABELS.map((label, idx) => (
+                      <SelectItem key={idx} value={String(idx)}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label>Start time</Label>
+                <Input type="time" value={slotForm.start} onChange={(e) => setSlotForm((f) => ({ ...f, start: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>End time</Label>
+                <Input type="time" value={slotForm.end} onChange={(e) => setSlotForm((f) => ({ ...f, end: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Max orders</Label>
+              <Input type="number" min={1} value={slotForm.max_orders} onChange={(e) => setSlotForm((f) => ({ ...f, max_orders: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSlotDialogOpen(false)}>Cancel</Button>
+            <Button onClick={submitSlot} disabled={createSlot.isPending || updateSlot.isPending}>
+              {createSlot.isPending || updateSlot.isPending ? "Saving…" : editingSlot ? "Save changes" : "Add slot"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete slot confirm */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this slot?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && `${DAY_LABELS[deleteTarget.day_of_week]} · ${deleteTarget.start_time.slice(0, 5)}–${deleteTarget.end_time.slice(0, 5)} will no longer accept pickups.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-danger hover:bg-danger/90"
+              onClick={() => {
+                if (deleteTarget) deleteSlot.mutate(deleteTarget.id)
+                setDeleteTarget(null)
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <AlertDialogContent>

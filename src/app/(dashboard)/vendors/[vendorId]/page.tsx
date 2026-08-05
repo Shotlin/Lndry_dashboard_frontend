@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Store, Loader2, FileText, Eye, AlertCircle } from "lucide-react"
+import { ArrowLeft, Store, Loader2, FileText, Eye } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -11,18 +11,9 @@ import { Badge } from "@/components/ui/badge"
 import { useVendorDetails } from "@/hooks/useVendorDetail"
 import { DocumentPreviewDialog } from "@/components/shared/DocumentPreviewDialog"
 import { VendorCapacityTab } from "@/components/vendors/VendorCapacityTab"
-
-function ComingSoon({ title, description }: { title: string; description: string }) {
-  return (
-    <Card>
-      <CardContent className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-        <AlertCircle className="h-8 w-8 text-muted-foreground" />
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground max-w-sm">{description}</p>
-      </CardContent>
-    </Card>
-  )
-}
+import { VendorEmployeesTab } from "@/components/vendors/VendorEmployeesTab"
+import { VendorDetailsSection } from "@/components/vendors/VendorDetailsSection"
+import { VendorServicesTab } from "@/components/vendors/VendorServicesTab"
 
 function DocumentStatusBadge({ status }: { status: string }) {
   if (status === "APPROVED") return <Badge className="bg-success-bg text-success border-0">VERIFIED</Badge>
@@ -32,7 +23,7 @@ function DocumentStatusBadge({ status }: { status: string }) {
 
 export default function VendorDetailPage({ params }: { params: { vendorId: string } }) {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState("documents")
+  const [activeTab, setActiveTab] = useState("details")
   const { data: vendor, isLoading, isError } = useVendorDetails(params.vendorId)
   const [previewDocId, setPreviewDocId] = useState<string | null>(null)
   const previewDoc = vendor?.documents.find((d) => d.id === previewDocId)
@@ -81,6 +72,9 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="h-10 w-full justify-start overflow-x-auto flex-nowrap border-b bg-transparent p-0 rounded-none">
+              <TabsTrigger value="details" className="text-sm px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:bg-transparent data-[state=active]:text-brand-500 font-semibold">
+                Details
+              </TabsTrigger>
               <TabsTrigger value="documents" className="text-sm px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:bg-transparent data-[state=active]:text-brand-500 font-semibold">
                 KYC Documents
               </TabsTrigger>
@@ -96,6 +90,10 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
             </TabsList>
 
             <div className="pt-6">
+              <TabsContent value="details" className="space-y-4">
+                <VendorDetailsSection id={params.vendorId} vendor={vendor} />
+              </TabsContent>
+
               <TabsContent value="documents" className="space-y-4">
                 <Card>
                   <CardHeader>
@@ -138,17 +136,11 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
               </TabsContent>
 
               <TabsContent value="services" className="space-y-4">
-                <ComingSoon
-                  title="Services & rates not available yet"
-                  description="There is no admin-facing endpoint for a vendor's services and garment rates yet. This tab will populate once that's built."
-                />
+                <VendorServicesTab vendorId={params.vendorId} />
               </TabsContent>
 
               <TabsContent value="employees" className="space-y-4">
-                <ComingSoon
-                  title="Employees view not available yet"
-                  description="The backend already supports vendor staff management, but the dashboard doesn't have a service wired up for it yet."
-                />
+                <VendorEmployeesTab vendorId={params.vendorId} />
               </TabsContent>
 
               <TabsContent value="slots" className="space-y-4">
