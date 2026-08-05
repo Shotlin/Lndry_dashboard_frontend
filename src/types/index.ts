@@ -67,6 +67,12 @@ export type {
   CouponTargetUser,
 } from "./coupon.types"
 export type {
+  FirstTimeOffer,
+  FirstTimeOfferRewardType,
+  CreateFirstTimeOfferPayload,
+  UpdateFirstTimeOfferPayload,
+} from "./first-time-offer.types"
+export type {
   Banner,
   CreateBannerPayload,
   UpdateBannerPayload,

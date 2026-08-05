@@ -1,0 +1,281 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { useCreateFirstTimeOffer, useUpdateFirstTimeOffer } from "@/hooks/useFirstTimeOffers"
+import { getCoupons } from "@/services/coupons.service"
+import type {
+  FirstTimeOffer,
+  CreateFirstTimeOfferPayload,
+  FirstTimeOfferRewardType,
+} from "@/types/first-time-offer.types"
+
+interface FirstTimeOfferDialogProps {
+  open: boolean
+  onClose: () => void
+  offer?: FirstTimeOffer | null
+}
+
+const REWARD_TYPE_LABELS: Record<FirstTimeOfferRewardType, string> = {
+  FREE_DELIVERY: "Free delivery",
+  FLAT_DISCOUNT: "Flat discount (₹)",
+  PERCENTAGE_DISCOUNT: "Percentage discount (%)",
+  COUPON_UNLOCK: "Unlock a coupon",
+}
+
+const INITIAL: CreateFirstTimeOfferPayload & { isActive: boolean } = {
+  name: "",
+  minOrderAmount: 0,
+  rewardType: "FREE_DELIVERY",
+  rewardValue: undefined,
+  maxDiscount: undefined,
+  unlockCouponId: undefined,
+  startAt: "",
+  endAt: "",
+  autoApply: true,
+  isActive: true,
+}
+
+export function FirstTimeOfferDialog({ open, onClose, offer }: FirstTimeOfferDialogProps) {
+  const [form, setForm] = useState(INITIAL)
+  const isEdit = !!offer
+  const createMutation = useCreateFirstTimeOffer()
+  const updateMutation = useUpdateFirstTimeOffer()
+  const { data: coupons = [] } = useQuery({ queryKey: ["coupons"], queryFn: getCoupons })
+
+  useEffect(() => {
+    if (offer) {
+      setForm({
+        name: offer.name,
+        minOrderAmount: offer.minOrderAmount,
+        rewardType: offer.rewardType,
+        rewardValue: offer.rewardValue ?? undefined,
+        maxDiscount: offer.maxDiscount ?? undefined,
+        unlockCouponId: offer.unlockCouponId ?? undefined,
+        startAt: offer.startAt ? offer.startAt.slice(0, 16) : "",
+        endAt: offer.endAt ? offer.endAt.slice(0, 16) : "",
+        autoApply: offer.autoApply,
+        isActive: offer.isActive,
+      })
+    } else {
+      setForm(INITIAL)
+    }
+  }, [offer, open])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const { isActive, ...rest } = form
+    const payload = {
+      ...rest,
+      // datetime-local gives "2026-07-13T15:53" (no seconds/timezone) — the
+      // backend requires a full RFC3339 date-time.
+      startAt: rest.startAt ? new Date(rest.startAt).toISOString() : undefined,
+      endAt: rest.endAt ? new Date(rest.endAt).toISOString() : undefined,
+    }
+
+    if (isEdit && offer) {
+      updateMutation.mutate({ id: offer.id, payload: { ...payload, isActive } }, { onSuccess: onClose })
+    } else {
+      createMutation.mutate(payload, { onSuccess: onClose })
+    }
+  }
+
+  const isPending = createMutation.isPending || updateMutation.isPending
+  const showRewardValue = form.rewardType === "FLAT_DISCOUNT" || form.rewardType === "PERCENTAGE_DISCOUNT"
+  const showMaxDiscount = form.rewardType === "PERCENTAGE_DISCOUNT"
+  const showCouponPicker = form.rewardType === "COUPON_UNLOCK"
+
+  // Unlocking a coupon only takes effect for a coupon whose own Target
+  // Audience is "Specific customers" (INDIVIDUAL) — any other audience runs
+  // its own separate eligibility rule and ignores this unlock entirely.
+  const eligibleCoupons = coupons.filter((c) => c.targetType === "INDIVIDUAL" && c.isActive)
+  const currentCoupon = form.unlockCouponId
+    ? coupons.find((c) => c.id === form.unlockCouponId)
+    : undefined
+  const currentCouponIncompatible =
+    !!currentCoupon && (currentCoupon.targetType !== "INDIVIDUAL" || !currentCoupon.isActive)
+  const couponOptions = currentCouponIncompatible ? [currentCoupon, ...eligibleCoupons] : eligibleCoupons
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit First-Time Offer" : "Create First-Time Offer"}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="ft-name">Offer Name *</Label>
+            <Input
+              id="ft-name"
+              placeholder="e.g. First order above ₹499"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+              maxLength={100}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ft-min">Minimum Order Amount</Label>
+            <Input
+              id="ft-min"
+              type="number"
+              min={0}
+              value={form.minOrderAmount ?? ""}
+              onChange={(e) => setForm({ ...form, minOrderAmount: parseFloat(e.target.value) || 0 })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Reward Type *</Label>
+              <Select
+                value={form.rewardType}
+                onValueChange={(v) => setForm({ ...form, rewardType: v as FirstTimeOfferRewardType })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(REWARD_TYPE_LABELS) as FirstTimeOfferRewardType[]).map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {REWARD_TYPE_LABELS[type]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {showRewardValue && (
+              <div className="space-y-1.5">
+                <Label htmlFor="ft-value">Reward Value *</Label>
+                <Input
+                  id="ft-value"
+                  type="number"
+                  min={0}
+                  value={form.rewardValue ?? ""}
+                  onChange={(e) => setForm({ ...form, rewardValue: parseFloat(e.target.value) || 0 })}
+                  required
+                />
+              </div>
+            )}
+          </div>
+
+          {showMaxDiscount && (
+            <div className="space-y-1.5">
+              <Label htmlFor="ft-max">Max Discount Cap</Label>
+              <Input
+                id="ft-max"
+                type="number"
+                min={0}
+                value={form.maxDiscount ?? ""}
+                onChange={(e) =>
+                  setForm({ ...form, maxDiscount: e.target.value ? parseFloat(e.target.value) : undefined })
+                }
+                placeholder="No cap"
+              />
+            </div>
+          )}
+
+          {showCouponPicker && (
+            <div className="space-y-1.5">
+              <Label>Coupon to Unlock *</Label>
+              <Select
+                value={form.unlockCouponId ?? ""}
+                onValueChange={(v) => setForm({ ...form, unlockCouponId: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a coupon..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {couponOptions.map((c) => (
+                    <SelectItem key={c!.id} value={c!.id}>
+                      {c!.code}
+                      {(c!.targetType !== "INDIVIDUAL" || !c!.isActive) && " ⚠️ won't work as-is"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currentCouponIncompatible ? (
+                <p className="text-xs text-destructive">
+                  &quot;{currentCoupon?.code}&quot; has Target Audience &quot;{currentCoupon?.targetType}
+                  &quot;{!currentCoupon?.isActive ? " and is inactive" : ""} — pick a different coupon, or
+                  go to Coupons and set its Target Audience to &quot;Specific customers&quot;
+                  {!currentCoupon?.isActive ? " and reactivate it" : ""} to keep using this one.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Only active coupons with Target Audience &quot;Specific customers&quot; can be unlocked
+                  this way — that&apos;s the only audience setting an unlock actually takes effect on.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ft-from">Start Date</Label>
+              <Input
+                id="ft-from"
+                type="datetime-local"
+                value={form.startAt ?? ""}
+                onChange={(e) => setForm({ ...form, startAt: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ft-until">End Date</Label>
+              <Input
+                id="ft-until"
+                type="datetime-local"
+                value={form.endAt ?? ""}
+                onChange={(e) => setForm({ ...form, endAt: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={form.autoApply}
+              onCheckedChange={(v) => setForm({ ...form, autoApply: v })}
+            />
+            <Label>Auto-apply (no claim step needed)</Label>
+          </div>
+
+          {isEdit && (
+            <div className="flex items-center gap-3">
+              <Switch checked={form.isActive} onCheckedChange={(v) => setForm({ ...form, isActive: v })} />
+              <Label>Active</Label>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Saving..." : isEdit ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
