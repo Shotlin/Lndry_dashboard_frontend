@@ -78,6 +78,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { id: "customerSegments", label: "Customer Segments", href: "/customer-segments", icon: "Users2" },
       { id: "coupons", label: "Coupons", href: "/coupons", icon: "Ticket" },
       { id: "firstTimeOffers", label: "First-Time Offers", href: "/first-time-offers", icon: "Gift" },
+      { id: "incompleteOrders", label: "Incomplete Orders", href: "/incomplete-orders", icon: "AlertTriangle" },
       { id: "banners", label: "Banners", href: "/banners", icon: "GalleryHorizontal" },
       { id: "vendorServices", label: "Service Approvals", href: "/vendor-services", icon: "ClipboardCheck" },
       { id: "supportTickets", label: "Support Tickets", href: "/support-tickets", icon: "MessageCircleQuestion" },

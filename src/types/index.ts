@@ -73,6 +73,16 @@ export type {
   UpdateFirstTimeOfferPayload,
 } from "./first-time-offer.types"
 export type {
+  IncompleteOrder,
+  IncompleteOrderSummary,
+  IncompleteOrderEvent,
+  IncompleteOrderCouponIssued,
+  IncompleteOrderDetail,
+  GarmentLine,
+  SendRecoveryReminderPayload,
+  IssueRecoveryCouponPayload,
+} from "./order-recovery.types"
+export type {
   Banner,
   CreateBannerPayload,
   UpdateBannerPayload,
