@@ -56,6 +56,11 @@ export interface FeeSettings {
 
   // ETA (display only)
   delivery_eta_minutes: number
+
+  // GST — exclusive tax, off by default
+  gst_enabled: boolean
+  gst_rate: number
+  gst_label: string
 }
 
 /** Partial update payload (every field optional). */
