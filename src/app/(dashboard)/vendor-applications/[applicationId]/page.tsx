@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useVendorDetails, useViewKycDocument } from "@/hooks/useVendorDetail"
+import { useVendorDetails } from "@/hooks/useVendorDetail"
 import { useUpdateVendorApplicationDetails } from "@/hooks/useVendorApplications"
 import { CORRECTION_SECTIONS } from "@/services/vendors.service"
+import { DocumentPreviewDialog } from "@/components/shared/DocumentPreviewDialog"
 
 const STATUS_STYLES: Record<string, string> = {
   WAITING_FOR_APPROVAL: "bg-[#FEF3C7] text-[#B45309]",
@@ -38,7 +39,8 @@ export default function ApplicationDetailPage() {
   const params = useParams()
   const appId = params.applicationId as string
   const { data: application, isLoading, isError } = useVendorDetails(appId)
-  const viewDocument = useViewKycDocument()
+  const [previewDocId, setPreviewDocId] = useState<string | null>(null)
+  const previewDoc = application?.documents?.find((d) => d.id === previewDocId)
   const updateDetails = useUpdateVendorApplicationDetails()
 
   const [isEditingDetails, setIsEditingDetails] = useState(false)
@@ -419,9 +421,21 @@ export default function ApplicationDetailPage() {
               )}
               {(application.status === "WAITING_FOR_APPROVAL" || application.status === "CORRECTION_REQUIRED" || application.status === "APPROVED") && (
                 <Link href={`/vendor-applications/${appId}/radius`} className="text-[13px] text-[#6366F1] font-semibold hover:text-[#4F46E5] inline-block mt-1">
-                  Open radius review
+                  Open radius &amp; capacity review
                 </Link>
               )}
+            </div>
+          </div>
+
+          {/* Capacity request */}
+          <div className="lndry-card">
+            <h2 className="text-[15px] font-bold text-[#080f14] mb-1">Capacity request</h2>
+            <p className="text-[12px] text-[#7e8998] mb-4">Requested daily order capacity</p>
+            <div className="flex justify-between text-[13px]">
+              <span className="text-[#7e8998]">Requested capacity</span>
+              <span className="text-[#080f14] font-bold">
+                {application.requested_daily_capacity != null ? `${application.requested_daily_capacity} orders/day` : "N/A"}
+              </span>
             </div>
           </div>
         </div>
@@ -444,11 +458,10 @@ export default function ApplicationDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={viewDocument.isPending}
-                      onClick={() => viewDocument.mutate(doc.id)}
+                      onClick={() => setPreviewDocId(doc.id)}
                       className="h-7 px-3 text-[11px] font-semibold border-[#6366F1] text-[#6366F1] hover:bg-[#EEF2FF] rounded-full"
                     >
-                      View image
+                      View
                     </Button>
                   </div>
                 </div>
@@ -457,6 +470,12 @@ export default function ApplicationDetailPage() {
           )}
         </div>
       </div>
+
+      <DocumentPreviewDialog
+        documentId={previewDocId}
+        title={previewDoc?.document_type.replace(/_/g, " ")}
+        onOpenChange={(open) => !open && setPreviewDocId(null)}
+      />
     </div>
   )
 }

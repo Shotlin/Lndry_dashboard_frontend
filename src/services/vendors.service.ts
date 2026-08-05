@@ -20,6 +20,7 @@ export interface Vendor {
   delivery_radius_km: number
   requested_service_radius_km?: number
   approved_service_radius_km?: number
+  requested_daily_capacity?: number | null
   gst_number?: string
   pan_number?: string
   bank_account_number?: string
@@ -42,11 +43,41 @@ export interface Vendor {
 
 export interface KycDocument {
   id: string
-  document_type: 'owner_identity' | 'shop_photo' | 'registration_document' | 'gst_certificate'
+  document_type: 'owner_identity' | 'shop_photo' | 'registration_document' | 'gst_certificate' | 'service_list'
   file_url: string
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
   rejection_reason?: string
   created_at?: string
+}
+
+export interface CapacityRequest {
+  id: string
+  vendor_id: string
+  requested_daily_limit: number
+  current_daily_limit_snapshot?: number | null
+  status: "PENDING" | "APPROVED" | "REJECTED"
+  admin_note?: string | null
+  reviewed_by?: string | null
+  reviewed_at?: string | null
+  created_at: string
+  vendor_name?: string
+  branch_code?: string
+}
+
+export interface VendorCapacity {
+  stage: "application" | "vendor"
+  requested_daily_capacity?: number | null
+  daily_limit?: number | null
+  weekly_availability?: Array<{
+    id: string
+    day_of_week: number
+    start_time: string
+    end_time: string
+    max_orders: number
+    is_active: boolean
+  }>
+  exceptions?: Array<{ id: string; date: string; type: string; limit_count: number | null; reason: string | null }>
+  requests?: CapacityRequest[]
 }
 
 export interface VendorDetails extends Vendor {
@@ -62,7 +93,7 @@ export const CORRECTION_SECTIONS = [
   { key: "business", label: "Business Details" },
   { key: "owner_bank", label: "Owner & Bank Details" },
   { key: "location", label: "Shop Location" },
-  { key: "radius", label: "Service Radius" },
+  { key: "radius", label: "Service Radius & Capacity" },
   { key: "documents", label: "Documents" },
 ] as const
 
@@ -71,6 +102,7 @@ export type CorrectionSectionKey = (typeof CORRECTION_SECTIONS)[number]["key"]
 export interface ReviewApplicationPayload {
   status: "APPROVED" | "REJECTED" | "CORRECTION_REQUIRED" | "SUSPENDED"
   approvedRadius?: number
+  approvedDailyCapacity?: number
   rejectionReason?: string
   correctionSections?: CorrectionSectionKey[]
   documentReviews?: Array<{
@@ -143,4 +175,30 @@ export async function getKycDocumentBlob(documentId: string): Promise<Blob> {
     responseType: "blob",
   })
   return data as unknown as Blob
+}
+
+export async function getVendorCapacity(id: string): Promise<VendorCapacity> {
+  const { data } = await api.get<ApiResponse<VendorCapacity>>(`/vendors/admin/${id}/capacity`)
+  return data.data
+}
+
+export async function listCapacityRequests(
+  status: "PENDING" | "APPROVED" | "REJECTED" = "PENDING"
+): Promise<CapacityRequest[]> {
+  const { data } = await api.get<ApiResponse<CapacityRequest[]>>("/vendors/admin/capacity-requests", {
+    params: { status },
+  })
+  return data.data || []
+}
+
+export async function reviewCapacityRequest(
+  requestId: string,
+  payload: { status: "APPROVED" | "REJECTED"; adminNote?: string }
+): Promise<CapacityRequest> {
+  const action = payload.status === "APPROVED" ? "approve" : "reject"
+  const { data } = await api.post<ApiResponse<CapacityRequest>>(
+    `/vendors/admin/capacity-requests/${requestId}/${action}`,
+    { adminNote: payload.adminNote }
+  )
+  return data.data
 }

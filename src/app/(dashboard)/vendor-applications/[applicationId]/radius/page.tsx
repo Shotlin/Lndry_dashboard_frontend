@@ -26,25 +26,29 @@ export default function RadiusApprovalPage() {
   // the +/- handlers below silently do string concatenation instead of math.
   const requestedRadius = Number(application?.requested_service_radius_km ?? application?.delivery_radius_km ?? 5)
   const [approvedRadius, setApprovedRadius] = useState<number | null>(null);
+  const [approvedCapacity, setApprovedCapacity] = useState<number | null>(null)
 
-  // Seed the editable approved-radius value once the real application loads,
-  // defaulting to whatever was requested.
+  // Seed the editable approved-radius/capacity values once the real
+  // application loads, defaulting to whatever was requested.
   useEffect(() => {
     if (application && approvedRadius === null) {
       setApprovedRadius(Number(application.approved_service_radius_km ?? requestedRadius))
+    }
+    if (application && approvedCapacity === null) {
+      setApprovedCapacity(Number(application.requested_daily_capacity ?? 10))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [application])
 
   function handleSave() {
-    if (approvedRadius == null) return
+    if (approvedRadius == null || approvedCapacity == null) return
     reviewApplication.mutate(
-      { id: appId, payload: { status: "APPROVED", approvedRadius } },
+      { id: appId, payload: { status: "APPROVED", approvedRadius, approvedDailyCapacity: approvedCapacity } },
       { onSuccess: () => router.push(`/vendor-applications/${appId}`) }
     )
   }
 
-  if (isLoading || !application || approvedRadius === null) {
+  if (isLoading || !application || approvedRadius === null || approvedCapacity === null) {
     return <div className="text-sm text-muted-foreground py-8">Loading application…</div>
   }
 
@@ -56,7 +60,7 @@ export default function RadiusApprovalPage() {
           <Link href={`/vendor-applications/${appId}`} className="text-[13px] text-[#6366F1] hover:text-[#4F46E5] font-medium">
             &larr; Back to application
           </Link>
-          <h1 className="text-[28px] font-bold tracking-tight text-[#080f14] mt-2">Radius approval</h1>
+          <h1 className="text-[28px] font-bold tracking-tight text-[#080f14] mt-2">Radius &amp; capacity approval</h1>
           <p className="text-[13px] text-[#7e8998] mt-0.5">{application.name}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -72,7 +76,7 @@ export default function RadiusApprovalPage() {
             disabled={reviewApplication.isPending}
             className="bg-[#6366F1] hover:bg-[#4F46E5] active:bg-[#4338CA] text-white font-bold rounded-full h-10 px-5 text-[13px] shadow-[0_4px_14px_rgba(6,182,212,0.25)]"
           >
-            {reviewApplication.isPending ? "Saving…" : "Save approved radius"}
+            {reviewApplication.isPending ? "Saving…" : "Approve with radius & capacity"}
           </Button>
         </div>
       </div>
@@ -138,6 +142,50 @@ export default function RadiusApprovalPage() {
               </div>
             </div>
             <p className="text-[11px] text-[#7e8998] mt-2">Customers outside the approved boundary will not see this vendor as eligible.</p>
+          </div>
+
+          {/* Capacity decision */}
+          <div className="lndry-card">
+            <h2 className="text-[15px] font-bold text-[#080f14] mb-3">Daily capacity decision</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between text-[13px] border-b border-[#f4f4f8] pb-2">
+                <span className="text-[#7e8998]">Requested capacity</span>
+                <span className="text-red-500 font-bold">
+                  {application.requested_daily_capacity != null ? `${application.requested_daily_capacity} orders/day` : "Not set"}
+                </span>
+              </div>
+              <div className="pt-2">
+                <span className="text-[12px] text-[#7e8998]">Approved daily capacity</span>
+                <div className="flex items-center gap-2 mt-2">
+                  {[10, 20].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setApprovedCapacity(preset)}
+                      className={`px-3 h-8 rounded-full border text-[13px] font-semibold ${
+                        approvedCapacity === preset
+                          ? "bg-[#6366F1] border-[#6366F1] text-white"
+                          : "border-[#e8e8ef] text-[#334155] hover:bg-[#fafafd]"
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    value={approvedCapacity}
+                    onChange={(e) => {
+                      const parsed = parseInt(e.target.value, 10)
+                      if (Number.isNaN(parsed)) return
+                      setApprovedCapacity(Math.max(1, parsed))
+                    }}
+                    className="w-20 h-8 rounded-full border border-[#e8e8ef] text-center text-[13px] font-semibold text-[#080f14] focus:border-[#6366F1] outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-[12px] text-[#7e8998]">orders/day</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

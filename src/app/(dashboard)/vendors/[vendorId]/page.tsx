@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useVendorDetails, useViewKycDocument } from "@/hooks/useVendorDetail"
+import { useVendorDetails } from "@/hooks/useVendorDetail"
+import { DocumentPreviewDialog } from "@/components/shared/DocumentPreviewDialog"
+import { VendorCapacityTab } from "@/components/vendors/VendorCapacityTab"
 
 function ComingSoon({ title, description }: { title: string; description: string }) {
   return (
@@ -32,7 +34,8 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("documents")
   const { data: vendor, isLoading, isError } = useVendorDetails(params.vendorId)
-  const viewDocument = useViewKycDocument()
+  const [previewDocId, setPreviewDocId] = useState<string | null>(null)
+  const previewDoc = vendor?.documents.find((d) => d.id === previewDocId)
 
   return (
     <div className="space-y-6">
@@ -121,8 +124,7 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
                                 variant="ghost"
                                 size="sm"
                                 className="h-8 px-2"
-                                disabled={viewDocument.isPending}
-                                onClick={() => viewDocument.mutate(doc.id)}
+                                onClick={() => setPreviewDocId(doc.id)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -150,15 +152,18 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
               </TabsContent>
 
               <TabsContent value="slots" className="space-y-4">
-                <ComingSoon
-                  title="Capacity & slots not available yet"
-                  description="The backend already supports pickup/delivery slot capacity, but the dashboard doesn't have a service wired up for it yet."
-                />
+                <VendorCapacityTab vendorId={params.vendorId} />
               </TabsContent>
             </div>
           </Tabs>
         </>
       )}
+
+      <DocumentPreviewDialog
+        documentId={previewDocId}
+        title={previewDoc?.document_type.replace(/_/g, " ")}
+        onOpenChange={(open) => !open && setPreviewDocId(null)}
+      />
     </div>
   )
 }
