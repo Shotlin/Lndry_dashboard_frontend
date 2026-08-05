@@ -1,5 +1,5 @@
 import api from "@/lib/api"
-import type { ApiResponse, Coupon, CreateCouponPayload, UpdateCouponPayload } from "@/types"
+import type { ApiResponse, Coupon, CouponTargetUser, CreateCouponPayload, UpdateCouponPayload } from "@/types"
 
 /** List all coupons (platform-wide, HQ view) */
 export async function getCoupons() {
@@ -26,5 +26,11 @@ export async function updateCoupon(id: string, payload: UpdateCouponPayload) {
 /** Delete a coupon */
 export async function deleteCoupon(id: string) {
   const { data } = await api.delete<ApiResponse<null>>(`/coupons/${id}`)
+  return data.data
+}
+
+/** Individually-targeted customers for a coupon (edit-dialog prefill) */
+export async function getCouponTargetUsers(id: string) {
+  const { data } = await api.get<ApiResponse<CouponTargetUser[]>>(`/coupons/${id}/target-users`)
   return data.data
 }

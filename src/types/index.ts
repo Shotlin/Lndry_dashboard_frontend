@@ -63,6 +63,8 @@ export type {
   CreateCouponPayload,
   UpdateCouponPayload,
   DiscountType,
+  CouponTargetType,
+  CouponTargetUser,
 } from "./coupon.types"
 export type {
   Banner,

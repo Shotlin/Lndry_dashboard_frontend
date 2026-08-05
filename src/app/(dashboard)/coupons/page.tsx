@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react"
+import { Loader2, Pencil, Plus, Search, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -43,13 +43,105 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useCustomerSegments } from "@/hooks/useCustomerSegments"
+import { useDebounce } from "@/hooks/useDebounce"
 import {
   createCoupon,
   deleteCoupon,
   getCoupons,
+  getCouponTargetUsers,
   updateCoupon,
 } from "@/services/coupons.service"
-import type { Coupon, DiscountType, UpdateCouponPayload } from "@/types"
+import { getCustomers } from "@/services/customers.service"
+import type { Coupon, CouponTargetType, DiscountType, UpdateCouponPayload } from "@/types"
+
+const TARGET_TYPE_LABELS: Record<CouponTargetType, string> = {
+  ALL: "All users",
+  SEGMENT: "A customer segment",
+  INDIVIDUAL: "Specific customers",
+  FIRST_TIME: "First-time users only",
+}
+
+type TargetCustomer = { id: string; name: string | null; phone: string | null }
+
+/** Search + multi-select picker for "Specific customers" targeting. */
+function CustomerTargetPicker({
+  selected,
+  onChange,
+}: {
+  selected: TargetCustomer[]
+  onChange: (next: TargetCustomer[]) => void
+}) {
+  const [search, setSearch] = useState("")
+  const debouncedSearch = useDebounce(search, 400)
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["coupon-target-customer-search", debouncedSearch],
+    queryFn: () => getCustomers({ search: debouncedSearch, limit: 10 }),
+    enabled: debouncedSearch.length >= 2,
+  })
+
+  const selectedIds = new Set(selected.map((c) => c.id))
+  const results = (data?.customers ?? []).filter((c) => !selectedIds.has(c.id))
+
+  return (
+    <div className="space-y-2">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search customers by name or phone..."
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {debouncedSearch.length >= 2 && (
+        <div className="rounded-md border bg-card max-h-40 overflow-y-auto">
+          {isFetching ? (
+            <div className="p-2.5 flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching...
+            </div>
+          ) : results.length === 0 ? (
+            <p className="p-2.5 text-sm text-muted-foreground">No matching customers</p>
+          ) : (
+            results.map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex items-center justify-between"
+                onClick={() => {
+                  onChange([...selected, { id: c.id, name: c.name, phone: c.phone }])
+                  setSearch("")
+                }}
+              >
+                <span>{c.name ?? "Unnamed"}</span>
+                <span className="text-xs text-muted-foreground">{c.phone}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((c) => (
+            <Badge key={c.id} variant="secondary" className="gap-1 pr-1">
+              {c.name ?? c.phone}
+              <button
+                type="button"
+                onClick={() => onChange(selected.filter((s) => s.id !== c.id))}
+                className="ml-0.5 rounded-full hover:bg-muted-foreground/20"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 type CouponForm = {
   code: string
@@ -63,6 +155,8 @@ type CouponForm = {
   validFrom: string
   validUntil: string
   isActive: boolean
+  targetType: CouponTargetType
+  targetSegmentId: string | undefined
 }
 
 function getErrorMessage(error: unknown) {
@@ -108,6 +202,8 @@ function createInitialForm(coupon?: Coupon | null): CouponForm {
     validFrom: toDatetimeLocalValue(coupon?.validFrom),
     validUntil: toDatetimeLocalValue(coupon?.validUntil),
     isActive: coupon?.isActive ?? true,
+    targetType: coupon?.targetType ?? "ALL",
+    targetSegmentId: coupon?.targetSegmentId ?? undefined,
   }
 }
 
@@ -128,7 +224,10 @@ export default function CouponsPage() {
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Coupon | null>(null)
   const [form, setForm] = useState<CouponForm>(createInitialForm())
+  const [targetCustomers, setTargetCustomers] = useState<TargetCustomer[]>([])
   const [isSaving, setIsSaving] = useState(false)
+
+  const { data: segments } = useCustomerSegments()
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["coupons"] })
 
@@ -153,12 +252,19 @@ export default function CouponsPage() {
   const openCreateDialog = () => {
     setEditingCoupon(null)
     setForm(createInitialForm())
+    setTargetCustomers([])
     setDialogOpen(true)
   }
 
   const openEditDialog = (coupon: Coupon) => {
     setEditingCoupon(coupon)
     setForm(createInitialForm(coupon))
+    setTargetCustomers([])
+    if (coupon.targetType === "INDIVIDUAL") {
+      getCouponTargetUsers(coupon.id)
+        .then((users) => setTargetCustomers(users.map((u) => ({ id: u.id, name: u.name, phone: u.phone }))))
+        .catch(() => {})
+    }
     setDialogOpen(true)
   }
 
@@ -166,6 +272,7 @@ export default function CouponsPage() {
     setDialogOpen(false)
     setEditingCoupon(null)
     setForm(createInitialForm())
+    setTargetCustomers([])
   }
 
   const handleSubmit = async () => {
@@ -201,6 +308,18 @@ export default function CouponsPage() {
       return
     }
 
+    if (form.targetType === "SEGMENT" && !form.targetSegmentId) {
+      toast.error("Choose a customer segment for this coupon")
+      return
+    }
+    if (form.targetType === "INDIVIDUAL" && targetCustomers.length === 0) {
+      toast.error("Add at least one customer for this coupon")
+      return
+    }
+
+    const targetSegmentId = form.targetType === "SEGMENT" ? form.targetSegmentId : undefined
+    const targetUserIds = form.targetType === "INDIVIDUAL" ? targetCustomers.map((c) => c.id) : undefined
+
     setIsSaving(true)
     try {
       if (editingCoupon) {
@@ -218,6 +337,9 @@ export default function CouponsPage() {
             validFrom,
             validUntil,
             isActive: form.isActive,
+            targetType: form.targetType,
+            targetSegmentId,
+            targetUserIds,
           },
         })
         toast.success("Coupon updated")
@@ -233,6 +355,9 @@ export default function CouponsPage() {
           perUserLimit,
           validFrom,
           validUntil,
+          targetType: form.targetType,
+          targetSegmentId,
+          targetUserIds,
         })
         toast.success("Coupon created")
       }
@@ -266,6 +391,7 @@ export default function CouponsPage() {
               <TableHead>Discount</TableHead>
               <TableHead>Min Order</TableHead>
               <TableHead>Used</TableHead>
+              <TableHead>Target</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-[180px] text-right">Actions</TableHead>
             </TableRow>
@@ -274,7 +400,7 @@ export default function CouponsPage() {
             {isLoading ? (
               Array.from({ length: 3 }).map((_, index) => (
                 <TableRow key={index}>
-                  {Array.from({ length: 7 }).map((__, cell) => (
+                  {Array.from({ length: 8 }).map((__, cell) => (
                     <TableCell key={cell}>
                       <div className="h-4 w-20 animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -283,7 +409,7 @@ export default function CouponsPage() {
               ))
             ) : coupons.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7}>
+                <TableCell colSpan={8}>
                   <EmptyState
                     title="No coupons yet"
                     description="Create your first discount code — flat amount or percentage off."
@@ -300,6 +426,9 @@ export default function CouponsPage() {
                   <TableCell>{formatDiscount(coupon)}</TableCell>
                   <TableCell>₹{coupon.minOrderAmount}</TableCell>
                   <TableCell>{coupon.usedCount}</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {TARGET_TYPE_LABELS[coupon.targetType ?? "ALL"]}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={coupon.isActive ? "default" : "secondary"}>
                       {coupon.isActive ? "Active" : "Inactive"}
@@ -454,6 +583,67 @@ export default function CouponsPage() {
                 />
               </div>
             </div>
+
+            <div className="space-y-1.5 rounded-lg border p-3">
+              <Label>Who can use this coupon?</Label>
+              <Select
+                value={form.targetType}
+                onValueChange={(v) => {
+                  const targetType = v as CouponTargetType
+                  setForm((f) => ({ ...f, targetType, targetSegmentId: undefined }))
+                  setTargetCustomers([])
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TARGET_TYPE_LABELS) as CouponTargetType[]).map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {TARGET_TYPE_LABELS[type]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {form.targetType === "SEGMENT" && (
+                <div className="pt-2">
+                  <Select
+                    value={form.targetSegmentId ?? ""}
+                    onValueChange={(v) => setForm((f) => ({ ...f, targetSegmentId: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a segment..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(segments ?? []).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} ({s.member_count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {segments?.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      No segments yet — create one under Customer Segments first.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {form.targetType === "INDIVIDUAL" && (
+                <div className="pt-2">
+                  <CustomerTargetPicker selected={targetCustomers} onChange={setTargetCustomers} />
+                </div>
+              )}
+
+              {form.targetType === "FIRST_TIME" && (
+                <p className="text-xs text-muted-foreground pt-1">
+                  Only customers placing their first order can redeem this coupon.
+                </p>
+              )}
+            </div>
+
             {editingCoupon && (
               <div className="flex items-center justify-between rounded-lg border px-4 py-3">
                 <div>
