@@ -18,6 +18,7 @@ import {
   Store,
   Tags,
   Ticket,
+  TrendingUp,
   Users,
   Users2,
   type LucideIcon,
@@ -60,6 +61,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Store,
   Tags,
   Ticket,
+  TrendingUp,
   Users,
   Users2,
 }
@@ -78,6 +80,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { id: "customerSegments", label: "Customer Segments", href: "/customer-segments", icon: "Users2" },
       { id: "coupons", label: "Coupons", href: "/coupons", icon: "Ticket" },
       { id: "firstTimeOffers", label: "First-Time Offers", href: "/first-time-offers", icon: "Gift" },
+      { id: "cartMilestones", label: "Cart Milestones", href: "/cart-milestones", icon: "TrendingUp" },
       { id: "incompleteOrders", label: "Incomplete Orders", href: "/incomplete-orders", icon: "AlertTriangle" },
       { id: "banners", label: "Banners", href: "/banners", icon: "GalleryHorizontal" },
       { id: "vendorServices", label: "Service Approvals", href: "/vendor-services", icon: "ClipboardCheck" },

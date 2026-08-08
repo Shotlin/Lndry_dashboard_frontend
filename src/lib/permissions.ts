@@ -97,6 +97,7 @@ export const MENU_PERMISSIONS: Record<string, MenuPermission> = {
   categories: { key: "categories", anyOf: ["categories.read"] },
   coupons: { key: "coupons", anyOf: ["settings.write"] },
   firstTimeOffers: { key: "firstTimeOffers", anyOf: ["settings.write"] },
+  cartMilestones: { key: "cartMilestones", anyOf: ["settings.write"] },
   incompleteOrders: { key: "incompleteOrders", anyOf: ["orders.read"] },
   banners: { key: "banners", anyOf: ["settings.write"] },
   payments: { key: "payments", anyOf: ["payments.read"] },

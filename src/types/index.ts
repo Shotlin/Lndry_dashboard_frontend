@@ -73,6 +73,13 @@ export type {
   UpdateFirstTimeOfferPayload,
 } from "./first-time-offer.types"
 export type {
+  CartMilestone,
+  CartMilestoneRewardType,
+  CartMilestoneUserType,
+  CreateCartMilestonePayload,
+  UpdateCartMilestonePayload,
+} from "./cart-milestone.types"
+export type {
   IncompleteOrder,
   IncompleteOrderSummary,
   IncompleteOrderEvent,
