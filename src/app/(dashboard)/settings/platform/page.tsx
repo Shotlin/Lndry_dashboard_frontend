@@ -134,6 +134,9 @@ export default function FeesAndDeliveryPage() {
     if (draft.gst_rate < 0 || draft.gst_rate > 100) {
       return "GST rate must be between 0 and 100"
     }
+    if (draft.express_pickup_fee_paise < 0) {
+      return "Express pickup fee cannot be negative"
+    }
     return null
   }, [draft])
 
@@ -262,6 +265,10 @@ export default function FeesAndDeliveryPage() {
           onRateChange={(v) => set("gst_rate", v ?? 0)}
           label={draft.gst_label}
           onLabelChange={(v) => set("gst_label", v)}
+        />
+        <ExpressPickupFeeSection
+          feePaise={draft.express_pickup_fee_paise}
+          onFeePaiseChange={(v) => set("express_pickup_fee_paise", v ?? 0)}
         />
       </div>
     </div>
@@ -671,6 +678,36 @@ function GstFeeSection({
           <Label>Customer-facing label</Label>
           <Input value={label} maxLength={60} onChange={(e) => onLabelChange(e.target.value)} />
         </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ExpressPickupFeeSection({
+  feePaise,
+  onFeePaiseChange,
+}: {
+  feePaise: number
+  onFeePaiseChange: (v: number | null) => void
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Express Pickup Fee</CardTitle>
+        <CardDescription>
+          Flat surcharge when a customer opts into 60-min express pickup, on
+          top of the standard 48-hour delivery. Only vendors with express
+          pickup turned on (per-vendor, in their profile) offer it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <NumberField
+          id="express-pickup-fee"
+          label="Fee amount"
+          suffix="₹"
+          value={feePaise / 100}
+          onChange={(v) => onFeePaiseChange(v == null ? null : Math.round(v * 100))}
+        />
       </CardContent>
     </Card>
   )

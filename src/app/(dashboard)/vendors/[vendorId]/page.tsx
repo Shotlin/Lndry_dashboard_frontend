@@ -2,13 +2,14 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Store, Loader2, FileText, Eye } from "lucide-react"
+import { ArrowLeft, Store, Loader2, FileText, Eye, Zap } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useVendorDetails } from "@/hooks/useVendorDetail"
+import { useVendorDetails, useSetExpressPickup } from "@/hooks/useVendorDetail"
 import { DocumentPreviewDialog } from "@/components/shared/DocumentPreviewDialog"
 import { VendorCapacityTab } from "@/components/vendors/VendorCapacityTab"
 import { VendorEmployeesTab } from "@/components/vendors/VendorEmployeesTab"
@@ -25,6 +26,7 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("details")
   const { data: vendor, isLoading, isError } = useVendorDetails(params.vendorId)
+  const setExpressPickup = useSetExpressPickup(params.vendorId)
   const [previewDocId, setPreviewDocId] = useState<string | null>(null)
   const previewDoc = vendor?.documents.find((d) => d.id === previewDocId)
 
@@ -60,12 +62,25 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-info-bg text-info border-0 px-2.5 py-0.5">{vendor.status}</Badge>
-              {vendor.is_active !== undefined && (
-                <Badge className={vendor.is_active ? "bg-success-bg text-success border-0 px-2.5 py-0.5" : "bg-muted text-muted-foreground border-0 px-2.5 py-0.5"}>
-                  {vendor.is_active ? "ACTIVE" : "INACTIVE"}
-                </Badge>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-info-bg text-info border-0 px-2.5 py-0.5">{vendor.status}</Badge>
+                {vendor.is_active !== undefined && (
+                  <Badge className={vendor.is_active ? "bg-success-bg text-success border-0 px-2.5 py-0.5" : "bg-muted text-muted-foreground border-0 px-2.5 py-0.5"}>
+                    {vendor.is_active ? "ACTIVE" : "INACTIVE"}
+                  </Badge>
+                )}
+              </div>
+              {vendor.status === "APPROVED" && (
+                <div className="flex items-center gap-2 rounded-full border px-3 py-1.5">
+                  <Zap className="h-3.5 w-3.5 text-brand-500" />
+                  <span className="text-xs font-semibold text-foreground">Express Pickup</span>
+                  <Switch
+                    checked={!!vendor.express_pickup_available}
+                    disabled={setExpressPickup.isPending}
+                    onCheckedChange={(checked) => setExpressPickup.mutate(checked)}
+                  />
+                </div>
               )}
             </div>
           </div>

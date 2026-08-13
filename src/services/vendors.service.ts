@@ -39,6 +39,7 @@ export interface Vendor {
   max_capacity?: number
   today_orders_count?: number
   acceptance_rate?: number
+  express_pickup_available?: boolean
 }
 
 export interface KycDocument {
@@ -206,6 +207,13 @@ export async function reviewCapacityRequest(
 export async function adminSetDailyCapacity(id: string, maxOrdersPerDay: number): Promise<{ daily_limit: number }> {
   const { data } = await api.put<ApiResponse<{ daily_limit: number }>>(`/vendors/admin/${id}/capacity`, {
     max_orders_per_day: maxOrdersPerDay,
+  })
+  return data.data
+}
+
+export async function adminSetExpressPickup(id: string, available: boolean): Promise<{ express_pickup_available: boolean }> {
+  const { data } = await api.put<ApiResponse<{ express_pickup_available: boolean }>>(`/vendors/admin/${id}/express-pickup`, {
+    available,
   })
   return data.data
 }

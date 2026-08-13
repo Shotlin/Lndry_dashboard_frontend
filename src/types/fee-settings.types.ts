@@ -61,6 +61,11 @@ export interface FeeSettings {
   gst_enabled: boolean
   gst_rate: number
   gst_label: string
+
+  // Express pickup — flat surcharge (paise) added when a customer opts
+  // into 60-min express pickup. Per-vendor availability lives on the
+  // vendor record, not here.
+  express_pickup_fee_paise: number
 }
 
 /** Partial update payload (every field optional). */
