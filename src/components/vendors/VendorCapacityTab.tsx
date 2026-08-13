@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, AlertCircle, Plus, Pencil, Trash2 } from "lucide-react"
+import { Loader2, AlertCircle, Plus, Pencil, Trash2, Zap } from "lucide-react"
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
@@ -27,6 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   useVendorCapacity,
   useReviewCapacityRequest,
@@ -35,6 +38,7 @@ import {
   useUpdatePickupSlot,
   useDeletePickupSlot,
 } from "@/hooks/useVendorCapacity"
+import { adminCreatePickupSlot } from "@/services/vendors.service"
 import type { VendorCapacity } from "@/services/vendors.service"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -42,6 +46,7 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 type SlotRow = NonNullable<VendorCapacity["weekly_availability"]>[number]
 
 export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
+  const queryClient = useQueryClient()
   const { data: capacity, isLoading, isError } = useVendorCapacity(vendorId)
   const reviewRequest = useReviewCapacityRequest(vendorId)
   const setCapacity = useSetDailyCapacity(vendorId)
@@ -56,6 +61,19 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
   const [editingSlot, setEditingSlot] = useState<SlotRow | null>(null)
   const [slotForm, setSlotForm] = useState({ day_of_week: "1", start: "09:00", end: "18:00", max_orders: "10" })
   const [deleteTarget, setDeleteTarget] = useState<SlotRow | null>(null)
+
+  // Bulk "every N hours" slot generation — manually adding one slot at a
+  // time via the dialog above is impractical when a vendor wants e.g. six
+  // 2-hour slots covering a full day across several days of the week.
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
+  const [bulkForm, setBulkForm] = useState({
+    days: [1] as number[],
+    start: "08:00",
+    end: "20:00",
+    interval_hours: "2",
+    max_orders: "5",
+  })
+  const [isBulkGenerating, setIsBulkGenerating] = useState(false)
 
   if (isLoading) {
     return (
@@ -133,6 +151,10 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
   }
 
   function submitSlot() {
+    if (slotForm.end <= slotForm.start) {
+      toast.error("End time must be after start time")
+      return
+    }
     const maxOrders = parseInt(slotForm.max_orders, 10) || 1
     if (editingSlot) {
       updateSlot.mutate(
@@ -144,6 +166,70 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
         { day_of_week: Number(slotForm.day_of_week), start: slotForm.start, end: slotForm.end, max_orders: maxOrders },
         { onSuccess: () => setSlotDialogOpen(false) }
       )
+    }
+  }
+
+  function openBulkGenerate() {
+    setBulkForm({ days: [1], start: "08:00", end: "20:00", interval_hours: "2", max_orders: "5" })
+    setBulkDialogOpen(true)
+  }
+
+  function toggleBulkDay(day: number, checked: boolean) {
+    setBulkForm((f) => ({
+      ...f,
+      days: checked ? [...f.days, day].sort() : f.days.filter((d) => d !== day),
+    }))
+  }
+
+  // Steps [start, end) in `interval_hours` increments for every checked
+  // day, e.g. 08:00 to 20:00 every 2 hours -> six slots per day.
+  function computeBulkRanges(): { start: string; end: string }[] {
+    const toMinutes = (t: string) => {
+      const [h, m] = t.split(":").map(Number)
+      return h * 60 + m
+    }
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const fromMinutes = (mins: number) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`
+
+    const startMin = toMinutes(bulkForm.start)
+    const endMin = toMinutes(bulkForm.end)
+    const stepMin = (parseFloat(bulkForm.interval_hours) || 0) * 60
+    if (!(stepMin > 0) || endMin <= startMin) return []
+
+    const ranges: { start: string; end: string }[] = []
+    for (let cursor = startMin; cursor + stepMin <= endMin; cursor += stepMin) {
+      ranges.push({ start: fromMinutes(cursor), end: fromMinutes(cursor + stepMin) })
+    }
+    return ranges
+  }
+
+  async function submitBulkGenerate() {
+    const ranges = computeBulkRanges()
+    const maxOrders = parseInt(bulkForm.max_orders, 10) || 1
+    if (ranges.length === 0 || bulkForm.days.length === 0) return
+
+    setIsBulkGenerating(true)
+    let created = 0
+    let failed = 0
+    for (const day of bulkForm.days) {
+      for (const range of ranges) {
+        try {
+          await adminCreatePickupSlot(vendorId, { day_of_week: day, start: range.start, end: range.end, max_orders: maxOrders })
+          created += 1
+        } catch {
+          // Most likely a duplicate (vendor_id, day_of_week, start_time, end_time)
+          // — skip and keep going rather than aborting the whole batch.
+          failed += 1
+        }
+      }
+    }
+    setIsBulkGenerating(false)
+    setBulkDialogOpen(false)
+    if (created > 0) {
+      queryClient.invalidateQueries({ queryKey: ["vendor-capacity", vendorId] })
+      toast.success(`${created} slot${created === 1 ? "" : "s"} created${failed > 0 ? `, ${failed} skipped (already existed)` : ""}`)
+    } else {
+      toast.error("No slots were created — they may already exist")
     }
   }
 
@@ -225,9 +311,14 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
               <CardTitle>Weekly pickup/delivery slots</CardTitle>
               <CardDescription>Per-slot order limits</CardDescription>
             </div>
-            <Button onClick={openAddSlot} size="sm" className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add slot
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={openBulkGenerate} size="sm" variant="outline" className="gap-1.5">
+                <Zap className="h-4 w-4" /> Generate slots
+              </Button>
+              <Button onClick={openAddSlot} size="sm" className="gap-1.5">
+                <Plus className="h-4 w-4" /> Add slot
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -342,6 +433,76 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
             <Button variant="outline" onClick={() => setSlotDialogOpen(false)}>Cancel</Button>
             <Button onClick={submitSlot} disabled={createSlot.isPending || updateSlot.isPending}>
               {createSlot.isPending || updateSlot.isPending ? "Saving…" : editingSlot ? "Save changes" : "Add slot"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk generate slots */}
+      <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate slots</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>Days</Label>
+              <div className="flex flex-wrap gap-3">
+                {DAY_LABELS.map((label, idx) => (
+                  <label key={idx} className="flex items-center gap-1.5 text-sm">
+                    <Checkbox
+                      checked={bulkForm.days.includes(idx)}
+                      onCheckedChange={(checked) => toggleBulkDay(idx, checked === true)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label>From</Label>
+                <Input type="time" value={bulkForm.start} onChange={(e) => setBulkForm((f) => ({ ...f, start: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label>To</Label>
+                <Input type="time" value={bulkForm.end} onChange={(e) => setBulkForm((f) => ({ ...f, end: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label>Every (hours)</Label>
+                <Input
+                  type="number"
+                  min={0.5}
+                  step={0.5}
+                  value={bulkForm.interval_hours}
+                  onChange={(e) => setBulkForm((f) => ({ ...f, interval_hours: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Max orders / slot</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={bulkForm.max_orders}
+                  onChange={(e) => setBulkForm((f) => ({ ...f, max_orders: e.target.value }))}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {computeBulkRanges().length > 0
+                ? `Creates ${computeBulkRanges().length} slot(s) per day × ${bulkForm.days.length} day(s) = ${computeBulkRanges().length * bulkForm.days.length} slot(s) total. Existing (day, start, end) combinations are skipped.`
+                : "Set a valid time range and interval to preview how many slots will be created."}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={submitBulkGenerate}
+              disabled={isBulkGenerating || bulkForm.days.length === 0 || computeBulkRanges().length === 0}
+            >
+              {isBulkGenerating ? "Generating…" : "Generate"}
             </Button>
           </DialogFooter>
         </DialogContent>
