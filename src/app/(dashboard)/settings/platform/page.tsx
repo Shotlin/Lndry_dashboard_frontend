@@ -1,22 +1,37 @@
 "use client"
 
 /**
- * Fees & Delivery settings — configures the canonical dynamic fee engine
- * (LNDRY-backend /api/v1/admin/fee-settings).
+ * Fees — the single home for every charge LNDRY configures: the dynamic
+ * delivery fee (LNDRY-backend /api/v1/admin/fee-settings), per-order fees
+ * (handling / platform / small-cart / surge / packaging / GST), the vendor
+ * commission reference rate, the express-pickup surcharge, and the
+ * checkout advance-payment amount (/api/v1/admin/settings).
  *
- * Admins set the distance-based delivery formula, free-delivery threshold,
- * and the handling / platform / small-cart / surge / packaging fees here.
- * A live preview calculator computes a real breakdown via the backend so the
- * admin sees exactly what a customer would pay for a given subtotal + distance
- * — no values are hardcoded and nothing is computed client-side.
+ * Admins set the delivery formula (flat or distance-based) and the
+ * free-delivery threshold here. A live preview calculator computes a real
+ * breakdown via the backend so the admin sees exactly what a customer
+ * would pay for a given subtotal + distance — no values are hardcoded and
+ * nothing is computed client-side.
  */
 
 import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Calculator, Loader2, Save, Truck } from "lucide-react"
+import {
+  Calculator,
+  Gauge,
+  IndianRupee,
+  Loader2,
+  Route,
+  Save,
+  Store,
+  Truck,
+  Wallet,
+  Zap,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/PageHeader"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -39,7 +54,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { feeSettingsService } from "@/services/fee-settings.service"
+import { useSettings, useUpdateSettings } from "@/hooks/useSettings"
 import type {
+  DeliveryFeeMode,
   FeeSettings,
   FeePreview,
   FeeValueType,
@@ -80,7 +97,7 @@ function numOrNull(value: string): number | null {
 // Page
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function FeesAndDeliveryPage() {
+export default function FeesPage() {
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState<FeeSettings | null>(null)
 
@@ -97,7 +114,7 @@ export default function FeesAndDeliveryPage() {
   const updateMutation = useMutation({
     mutationFn: feeSettingsService.update,
     onSuccess: () => {
-      toast.success("Fees & delivery settings saved")
+      toast.success("Fees saved")
       queryClient.invalidateQueries({ queryKey: ["admin", "fee-settings"] })
     },
     onError: (error) => toast.error(getErrorMessage(error)),
@@ -111,19 +128,24 @@ export default function FeesAndDeliveryPage() {
   const validationError = useMemo(() => {
     if (!draft) return null
     if (draft.min_delivery_fee < 0) return "Minimum delivery fee cannot be negative"
-    if (draft.base_distance_km < 0) return "Base distance cannot be negative"
-    if (draft.per_km_fee < 0) return "Per-km fee cannot be negative"
-    if (
-      draft.max_delivery_distance_km != null &&
-      draft.max_delivery_distance_km < draft.base_distance_km
-    ) {
-      return "Maximum delivery distance must be greater than or equal to the base distance"
+    if (draft.delivery_fee_mode === "DISTANCE") {
+      if (draft.base_distance_km < 0) return "Base distance cannot be negative"
+      if (draft.per_km_fee < 0) return "Per-km fee cannot be negative"
+      if (
+        draft.max_delivery_distance_km != null &&
+        draft.max_delivery_distance_km < draft.base_distance_km
+      ) {
+        return "Maximum delivery distance must be greater than or equal to the base distance"
+      }
     }
     if (
       draft.free_delivery_enabled &&
       (draft.free_delivery_above == null || draft.free_delivery_above <= 0)
     ) {
       return "Free-delivery threshold must be a positive amount when free delivery is enabled"
+    }
+    if (draft.vendor_commission_type === "PERCENT" && draft.vendor_commission_value > 100) {
+      return "Vendor commission percentage cannot exceed 100"
     }
     if (draft.handling_fee_type === "PERCENT" && draft.handling_fee_value > 100) {
       return "Handling fee percentage cannot exceed 100"
@@ -158,8 +180,8 @@ export default function FeesAndDeliveryPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Fees & Delivery"
-          subtitle="Configure dynamic delivery charges and order fees."
+          title="Fees"
+          subtitle="Every charge LNDRY configures, in one place."
         />
         <div className="grid gap-4 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -181,10 +203,10 @@ export default function FeesAndDeliveryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
-        title="Fees & Delivery"
-        subtitle="Configure dynamic, distance-based delivery charges and order fees. Changes apply to new orders only."
+        title="Fees"
+        subtitle="Configure delivery, order, vendor, and payment fees. Changes apply to new orders only."
       >
         <Button onClick={handleSave} disabled={updateMutation.isPending}>
           {updateMutation.isPending ? (
@@ -202,9 +224,22 @@ export default function FeesAndDeliveryPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <SummaryStrip draft={draft} />
+
+      <FeeSection
+        icon={Truck}
+        title="Delivery"
+        description="What the customer pays for pickup + delivery."
+      >
         <DeliverySection draft={draft} set={set} />
         <PreviewCalculator />
+      </FeeSection>
+
+      <FeeSection
+        icon={IndianRupee}
+        title="Order Fees"
+        description="Extra charges applied on top of the item subtotal."
+      >
         <FlatFeeSection
           title="Handling Fee"
           description="Charged on every order to cover packing and handling."
@@ -266,17 +301,124 @@ export default function FeesAndDeliveryPage() {
           label={draft.gst_label}
           onLabelChange={(v) => set("gst_label", v)}
         />
+      </FeeSection>
+
+      <FeeSection
+        icon={Store}
+        title="Vendor"
+        description="What LNDRY charges the vendor — configured here, not yet deducted automatically."
+      >
+        <VendorCommissionSection draft={draft} set={set} />
+      </FeeSection>
+
+      <FeeSection
+        icon={Wallet}
+        title="Payments"
+        description="Express-delivery surcharge and the checkout advance amount."
+      >
         <ExpressPickupFeeSection
           feePaise={draft.express_pickup_fee_paise}
           onFeePaiseChange={(v) => set("express_pickup_fee_paise", v ?? 0)}
         />
-      </div>
+        <AdvancePaymentSection />
+      </FeeSection>
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Section: Delivery fee (distance-based)
+// Section wrapper — icon + title + description header, cards in a grid below
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FeeSection({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ElementType
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <Icon className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold leading-none">{title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">{children}</div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Summary strip — at-a-glance badges for the numbers that matter most
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SummaryStrip({ draft }: { draft: FeeSettings }) {
+  const deliveryLabel =
+    draft.delivery_fee_mode === "FLAT"
+      ? `${inr(draft.min_delivery_fee)} flat`
+      : `${inr(draft.min_delivery_fee)} + ${inr(draft.per_km_fee)}/km after ${draft.base_distance_km}km`
+
+  const items: Array<{ icon: React.ElementType; label: string; value: string }> = [
+    {
+      icon: draft.delivery_fee_mode === "FLAT" ? IndianRupee : Route,
+      label: "Delivery fee",
+      value: draft.delivery_fee_enabled ? deliveryLabel : "Off",
+    },
+    {
+      icon: Gauge,
+      label: "Free delivery above",
+      value:
+        draft.free_delivery_enabled && draft.free_delivery_above != null
+          ? inr(draft.free_delivery_above)
+          : "Off",
+    },
+    {
+      icon: Store,
+      label: "Vendor commission",
+      value: draft.vendor_commission_enabled
+        ? draft.vendor_commission_type === "PERCENT"
+          ? `${draft.vendor_commission_value}%`
+          : inr(draft.vendor_commission_value)
+        : "Off",
+    },
+    {
+      icon: Zap,
+      label: "Express pickup fee",
+      value: inr(draft.express_pickup_fee_paise / 100),
+    },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 shadow-sm"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <item.icon className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-xs text-muted-foreground">{item.label}</p>
+            <p className="truncate text-sm font-semibold">{item.value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section: Delivery fee (flat or distance-based)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface DeliverySectionProps {
@@ -330,18 +472,17 @@ function NumberField({
 }
 
 function DeliverySection({ draft, set }: DeliverySectionProps) {
+  const isFlat = draft.delivery_fee_mode === "FLAT"
+
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle className="text-lg">Delivery Fee</CardTitle>
-              <CardDescription>
-                Dynamic charge based on distance from the store to the customer.
-              </CardDescription>
-            </div>
+          <div>
+            <CardTitle className="text-lg">Delivery Fee</CardTitle>
+            <CardDescription>
+              Charged for pickup + delivery on every order.
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Enabled</span>
@@ -353,40 +494,76 @@ function DeliverySection({ draft, set }: DeliverySectionProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="space-y-1.5">
+          <Label>Pricing mode</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => set("delivery_fee_mode", "FLAT")}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                isFlat
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-input text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              <IndianRupee className="h-4 w-4" />
+              Flat amount
+            </button>
+            <button
+              type="button"
+              onClick={() => set("delivery_fee_mode", "DISTANCE")}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
+                !isFlat
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "border-input text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Route className="h-4 w-4" />
+              Distance-based
+            </button>
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-3">
           <NumberField
             id="min_delivery_fee"
-            label="Minimum delivery fee"
+            label={isFlat ? "Delivery fee" : "Minimum delivery fee"}
             suffix="₹"
             value={draft.min_delivery_fee}
             onChange={(v) => set("min_delivery_fee", v ?? 0)}
           />
-          <NumberField
-            id="base_distance_km"
-            label="Base distance included"
-            suffix="km"
-            value={draft.base_distance_km}
-            onChange={(v) => set("base_distance_km", v ?? 0)}
-          />
-          <NumberField
-            id="per_km_fee"
-            label="Per-km fee (after base)"
-            suffix="₹"
-            value={draft.per_km_fee}
-            onChange={(v) => set("per_km_fee", v ?? 0)}
-          />
+          {!isFlat ? (
+            <>
+              <NumberField
+                id="base_distance_km"
+                label="Base distance included"
+                suffix="km"
+                value={draft.base_distance_km}
+                onChange={(v) => set("base_distance_km", v ?? 0)}
+              />
+              <NumberField
+                id="per_km_fee"
+                label="Per-km fee (after base)"
+                suffix="₹"
+                value={draft.per_km_fee}
+                onChange={(v) => set("per_km_fee", v ?? 0)}
+              />
+            </>
+          ) : null}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField
-            id="max_delivery_distance_km"
-            label="Max delivery distance (optional)"
-            suffix="km"
-            placeholder="No limit"
-            value={draft.max_delivery_distance_km}
-            onChange={(v) => set("max_delivery_distance_km", v)}
-          />
-        </div>
+        {!isFlat ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <NumberField
+              id="max_delivery_distance_km"
+              label="Max delivery distance (optional)"
+              suffix="km"
+              placeholder="No limit"
+              value={draft.max_delivery_distance_km}
+              onChange={(v) => set("max_delivery_distance_km", v)}
+            />
+          </div>
+        ) : null}
 
         <Separator />
 
@@ -415,8 +592,21 @@ function DeliverySection({ draft, set }: DeliverySectionProps) {
         ) : null}
 
         <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-          Formula: delivery&nbsp;=&nbsp;min&nbsp;fee&nbsp;+&nbsp;⌈max(0,&nbsp;distance&nbsp;−&nbsp;base)⌉&nbsp;×&nbsp;per-km&nbsp;fee.
-          Distance beyond the max is capped so fees never run away.
+          {isFlat ? (
+            <>
+              Formula: delivery&nbsp;=&nbsp;{inr(draft.min_delivery_fee)} flat, regardless of
+              distance
+              {draft.free_delivery_enabled && draft.free_delivery_above != null
+                ? `, waived above ${inr(draft.free_delivery_above)}`
+                : ""}
+              .
+            </>
+          ) : (
+            <>
+              Formula: delivery&nbsp;=&nbsp;min&nbsp;fee&nbsp;+&nbsp;⌈max(0,&nbsp;distance&nbsp;−&nbsp;base)⌉&nbsp;×&nbsp;per-km&nbsp;fee.
+              Distance beyond the max is capped so fees never run away.
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -424,7 +614,7 @@ function DeliverySection({ draft, set }: DeliverySectionProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Section: Flat/Percent fee (handling, platform)
+// Section: Flat/Percent fee (handling, platform, vendor commission)
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface FlatFeeSectionProps {
@@ -440,6 +630,7 @@ interface FlatFeeSectionProps {
   onLabelChange: (v: string) => void
   descriptionText: string
   onDescriptionChange: (v: string) => void
+  badge?: string
 }
 
 function FlatFeeSection({
@@ -455,13 +646,21 @@ function FlatFeeSection({
   onLabelChange,
   descriptionText,
   onDescriptionChange,
+  badge,
 }: FlatFeeSectionProps) {
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-lg">{title}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{title}</CardTitle>
+              {badge ? (
+                <Badge variant="secondary" className="text-[10px] font-normal">
+                  {badge}
+                </Badge>
+              ) : null}
+            </div>
             <CardDescription>{description}</CardDescription>
           </div>
           <Switch checked={enabled} onCheckedChange={onEnabledChange} />
@@ -507,6 +706,32 @@ function FlatFeeSection({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section: Vendor commission (reference-only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function VendorCommissionSection({ draft, set }: DeliverySectionProps) {
+  return (
+    <div className="lg:col-span-2">
+      <FlatFeeSection
+        title="Vendor Commission"
+        description="What LNDRY intends to charge the vendor per order."
+        badge="Not applied to payouts yet"
+        enabled={draft.vendor_commission_enabled}
+        onEnabledChange={(v) => set("vendor_commission_enabled", v)}
+        type={draft.vendor_commission_type}
+        onTypeChange={(v) => set("vendor_commission_type", v)}
+        value={draft.vendor_commission_value}
+        onValueChange={(v) => set("vendor_commission_value", v)}
+        label={draft.vendor_commission_label}
+        onLabelChange={(v) => set("vendor_commission_label", v)}
+        descriptionText={draft.vendor_commission_description ?? ""}
+        onDescriptionChange={(v) => set("vendor_commission_description", v)}
+      />
+    </div>
   )
 }
 
@@ -708,6 +933,71 @@ function ExpressPickupFeeSection({
           value={feePaise / 100}
           onChange={(v) => onFeePaiseChange(v == null ? null : Math.round(v * 100))}
         />
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section: Advance payment — separate backend source (/admin/settings),
+// so it carries its own local draft + save button rather than sharing the
+// page-level fee-settings mutation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AdvancePaymentSection() {
+  const { data: settings, isLoading } = useSettings()
+  const updateSettings = useUpdateSettings()
+  const [rupees, setRupees] = useState<number | null>(null)
+
+  const savedPaise = settings?.order_advance_amount_paise?.value
+  useEffect(() => {
+    if (savedPaise !== undefined && savedPaise !== null) {
+      setRupees(Number(savedPaise) / 100)
+    }
+  }, [savedPaise])
+
+  function save() {
+    if (rupees == null || rupees < 0) {
+      toast.error("Advance amount cannot be negative")
+      return
+    }
+    updateSettings.mutate({ order_advance_amount_paise: Math.round(rupees * 100) })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Advance Payment</CardTitle>
+        <CardDescription>
+          Fixed amount charged online at checkout before the vendor confirms
+          the order; the balance is collected at delivery.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : (
+          <NumberField
+            id="advance-payment"
+            label="Advance amount"
+            suffix="₹"
+            value={rupees}
+            onChange={setRupees}
+          />
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={save}
+          disabled={updateSettings.isPending || isLoading}
+        >
+          {updateSettings.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          Save advance amount
+        </Button>
       </CardContent>
     </Card>
   )

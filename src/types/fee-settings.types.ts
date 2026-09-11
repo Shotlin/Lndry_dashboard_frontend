@@ -4,6 +4,7 @@
  */
 
 export type FeeValueType = "FLAT" | "PERCENT"
+export type DeliveryFeeMode = "FLAT" | "DISTANCE"
 
 /** Full fee configuration row (GLOBAL or a per-shop override). */
 export interface FeeSettings {
@@ -12,14 +13,23 @@ export interface FeeSettings {
   shop_id: string | null
   is_active: boolean
 
-  // Delivery (distance-based)
+  // Delivery (distance-based, or flat when delivery_fee_mode="FLAT")
   delivery_fee_enabled: boolean
+  delivery_fee_mode: DeliveryFeeMode
   min_delivery_fee: number
   base_distance_km: number
   per_km_fee: number
   max_delivery_distance_km: number | null
   free_delivery_enabled: boolean
   free_delivery_above: number | null
+
+  // Vendor commission — reference value only; not yet applied to vendor
+  // payouts/settlement.
+  vendor_commission_enabled: boolean
+  vendor_commission_type: FeeValueType
+  vendor_commission_value: number
+  vendor_commission_label: string
+  vendor_commission_description: string | null
 
   // Handling
   handling_fee_enabled: boolean
