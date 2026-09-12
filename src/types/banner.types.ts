@@ -4,8 +4,10 @@ export interface Banner {
   title: string
   subtitle: string | null
   image_url: string
-  banner_type: "carousel" | "popup" | "announcement"
-  link_type: "category" | "product" | "url" | "none"
+  banner_type: "carousel" | "offer" | "popup" | "announcement"
+  /** `link_value` is a coupon `code` (not an id) when `link_type` is "coupon" —
+   * matches how the customer app resolves it via POST /coupons/validate. */
+  link_type: "category" | "product" | "url" | "coupon" | "none"
   link_value: string | null
   is_active: boolean
   sort_order: number
@@ -20,8 +22,8 @@ export interface CreateBannerPayload {
   title: string
   subtitle?: string
   imageUrl: string
-  bannerType?: "carousel" | "popup" | "announcement"
-  linkType?: "category" | "product" | "url" | "none"
+  bannerType?: "carousel" | "offer" | "popup" | "announcement"
+  linkType?: "category" | "product" | "url" | "coupon" | "none"
   linkValue?: string
   isActive?: boolean
   startDate?: string

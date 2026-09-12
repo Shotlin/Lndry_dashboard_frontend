@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/shared/EmptyState"
@@ -51,6 +52,7 @@ import {
   useReorderBanners,
   useUpdateBanner,
 } from "@/hooks/useBanners"
+import { getCoupons } from "@/services/coupons.service"
 import { deleteImage, uploadImage } from "@/services/uploads.service"
 import type { Banner } from "@/types"
 
@@ -153,6 +155,7 @@ function createInitialBannerForm(banner?: Banner | null): BannerForm {
 
 function formatBannerType(type: Banner["banner_type"]) {
   if (type === "carousel") return "Carousel"
+  if (type === "offer") return "Small Offer"
   if (type === "popup") return "Popup"
   return "Announcement"
 }
@@ -160,6 +163,11 @@ function formatBannerType(type: Banner["banner_type"]) {
 export default function BannersPage() {
   const { data: bannersRaw, isLoading } = useBanners()
   const banners: Banner[] = Array.isArray(bannersRaw) ? bannersRaw : []
+
+  // For the Link Type "Coupon" picker below — lets an admin pick a real
+  // coupon by code instead of typing one freehand (and getting it wrong).
+  const { data: couponsRaw } = useQuery({ queryKey: ["coupons"], queryFn: getCoupons })
+  const coupons = Array.isArray(couponsRaw) ? couponsRaw : []
   const sortedBanners = useMemo(
     () => [...banners].sort((a, b) => a.sort_order - b.sort_order),
     [banners]
@@ -292,7 +300,7 @@ export default function BannersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Banners"
-        subtitle="Carousel, popup and announcement banners shown in the customer app — reorder to control display priority."
+        subtitle="Carousel, small offer, popup and announcement banners shown in the customer app — reorder to control display priority."
       >
         <Button size="sm" onClick={openCreateDialog}>
           <Plus className="mr-1.5 h-4 w-4" />
@@ -464,6 +472,7 @@ export default function BannersPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="carousel">Carousel</SelectItem>
+                    <SelectItem value="offer">Small Offer</SelectItem>
                     <SelectItem value="popup">Popup</SelectItem>
                     <SelectItem value="announcement">Announcement</SelectItem>
                   </SelectContent>
@@ -489,11 +498,43 @@ export default function BannersPage() {
                     <SelectItem value="category">Category</SelectItem>
                     <SelectItem value="product">Product</SelectItem>
                     <SelectItem value="url">URL</SelectItem>
+                    <SelectItem value="coupon">Coupon</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            {form.linkType !== "none" && (
+            {form.linkType === "coupon" ? (
+              <div className="space-y-2">
+                <Label>Coupon</Label>
+                <Select
+                  value={form.linkValue}
+                  onValueChange={(v) => setForm((f) => ({ ...f, linkValue: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a coupon" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {coupons.length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        No coupons found
+                      </div>
+                    ) : (
+                      coupons.map((c) => (
+                        <SelectItem key={c.id} value={c.code}>
+                          {c.code}
+                          {c.description ? ` — ${c.description}` : ""}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Tapping this banner in the app opens Coupons &amp; Offers and
+                  applies this code against the customer&apos;s current cart —
+                  same as if they&apos;d entered it themselves.
+                </p>
+              </div>
+            ) : form.linkType !== "none" ? (
               <div className="space-y-2">
                 <Label htmlFor="banner-link-value">
                   {form.linkType === "category"
@@ -509,7 +550,7 @@ export default function BannersPage() {
                   placeholder={form.linkType === "url" ? "https://..." : "Target ID"}
                 />
               </div>
-            )}
+            ) : null}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="banner-start-date">Start Date (optional)</Label>
