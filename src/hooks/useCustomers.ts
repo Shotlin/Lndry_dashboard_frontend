@@ -14,6 +14,8 @@ import {
   getCustomers,
   getCustomerDetail,
   getCustomerOrders,
+  getCustomerAddresses,
+  setDefaultAddress,
   toggleBlockCustomer,
   notifyCustomer,
   exportCustomersCsv,
@@ -57,6 +59,28 @@ export function useCustomerOrders(customerId: string | null, page = 1) {
     queryFn: () => getCustomerOrders(customerId!, page),
     enabled: !!customerId,
     staleTime: 30 * 1000,
+  })
+}
+
+export function useCustomerAddresses(customerId: string | null) {
+  return useQuery({
+    queryKey: ["customers", "addresses", customerId],
+    queryFn: () => getCustomerAddresses(customerId!),
+    enabled: !!customerId,
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useSetDefaultAddress() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ customerId, addressId }: { customerId: string; addressId: string }) =>
+      setDefaultAddress(customerId, addressId),
+    onSuccess: (_, { customerId }) => {
+      toast.success("Default address updated")
+      qc.invalidateQueries({ queryKey: ["customers", "addresses", customerId] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to update default address"),
   })
 }
 

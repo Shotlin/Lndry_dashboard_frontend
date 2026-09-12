@@ -55,6 +55,9 @@ export type {
 export type {
   Customer,
   CustomerDetail,
+  CustomerDevice,
+  CustomerAddress,
+  CustomerOrder,
   CustomerFilters,
 } from "./customer.types"
 export type {

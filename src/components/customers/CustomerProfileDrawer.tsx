@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,13 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -29,19 +36,28 @@ import {
   ShoppingBag,
   Wallet,
   Star,
+  XCircle,
   Bell,
   ShieldBan,
   ShieldCheck,
   Loader2,
   Crown,
+  Smartphone,
+  Ticket,
+  CheckCircle2,
 } from "lucide-react"
 import {
   useCustomerDetail,
   useCustomerOrders,
+  useCustomerAddresses,
+  useSetDefaultAddress,
   useToggleBlockCustomer,
   useNotifyCustomer,
 } from "@/hooks/useCustomers"
-import { useAuthStore } from "@/store/auth.store"
+import { useMutation } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { createCoupon } from "@/services/coupons.service"
+import type { DiscountType } from "@/types/coupon.types"
 
 import { formatINR, formatDate, formatRelativeTime } from "@/lib/utils"
 import { STATUS_CONFIG, type OrderStatus } from "@/lib/constants"
@@ -55,14 +71,34 @@ interface CustomerProfileDrawerProps {
 export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerProfileDrawerProps) {
   const { data: customer, isLoading } = useCustomerDetail(customerId)
   const { data: ordersData } = useCustomerOrders(customerId)
+  const { data: addresses } = useCustomerAddresses(customerId)
   const toggleBlock = useToggleBlockCustomer()
-  const showNotFound = false
+  const setDefaultAddress = useSetDefaultAddress()
 
   const [notifyDialog, setNotifyDialog] = useState(false)
   const [notifyTitle, setNotifyTitle] = useState("")
   const [notifyBody, setNotifyBody] = useState("")
-
   const notifyCustomer = useNotifyCustomer()
+
+  const [couponDialog, setCouponDialog] = useState(false)
+  const [couponCode, setCouponCode] = useState("")
+  const [couponDiscountType, setCouponDiscountType] = useState<DiscountType>("PERCENTAGE")
+  const [couponDiscountValue, setCouponDiscountValue] = useState("")
+  const [couponMinOrder, setCouponMinOrder] = useState("")
+  const [couponValidUntil, setCouponValidUntil] = useState("")
+
+  const sendCoupon = useMutation({
+    mutationFn: createCoupon,
+    onSuccess: () => {
+      toast.success(`Coupon "${couponCode.trim().toUpperCase()}" sent to ${customer?.name ?? "customer"}`)
+      setCouponDialog(false)
+      setCouponCode("")
+      setCouponDiscountValue("")
+      setCouponMinOrder("")
+      setCouponValidUntil("")
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to create coupon"),
+  })
 
   const handleNotify = () => {
     if (!customer || !notifyTitle || !notifyBody) return
@@ -76,6 +112,19 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
         },
       }
     )
+  }
+
+  const handleSendCoupon = () => {
+    if (!customer || !couponCode.trim() || !couponDiscountValue) return
+    sendCoupon.mutate({
+      code: couponCode.trim().toUpperCase(),
+      discountType: couponDiscountType,
+      discountValue: Number(couponDiscountValue),
+      minOrderAmount: couponMinOrder ? Number(couponMinOrder) : undefined,
+      validUntil: couponValidUntil ? new Date(couponValidUntil).toISOString() : undefined,
+      targetType: "INDIVIDUAL",
+      targetUserIds: [customer.id],
+    })
   }
 
   return (
@@ -118,9 +167,6 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
                             <Crown className="h-2.5 w-2.5 mr-0.5" /> VIP
                           </Badge>
                         )}
-                        {customer.membership_tier && (
-                          <Badge variant="outline" className="text-[10px]">{customer.membership_tier}</Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
@@ -141,10 +187,16 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
                   </div>
 
                   {/* Stats */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-2.5">
                     <StatBox icon={<ShoppingBag className="h-4 w-4" />} label="Orders" value={customer.order_count.toString()} />
                     <StatBox icon={<Wallet className="h-4 w-4" />} label="Spent" value={formatINR(customer.total_spent)} />
                     <StatBox icon={<Star className="h-4 w-4" />} label="Points" value={customer.loyalty_points.toString()} />
+                    <StatBox
+                      icon={<XCircle className="h-4 w-4" />}
+                      label="Cancelled"
+                      value={customer.cancelled_count.toString()}
+                      tone={customer.cancelled_count > 0 ? "warn" : undefined}
+                    />
                   </div>
 
                   {/* Actions */}
@@ -157,6 +209,15 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
                     >
                       <Bell className="h-3.5 w-3.5 mr-1" />
                       Send Notification
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8"
+                      onClick={() => setCouponDialog(true)}
+                    >
+                      <Ticket className="h-3.5 w-3.5 mr-1" />
+                      Send Personal Coupon
                     </Button>
                     <Button
                       size="sm"
@@ -181,40 +242,88 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
 
                   <Separator />
 
+                  {/* Last Active Device */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                      <Smartphone className="h-4 w-4 text-muted-foreground" />
+                      Last Active Device
+                    </h4>
+                    {customer.last_device ? (
+                      <div className="p-2.5 rounded-lg border text-xs space-y-0.5">
+                        <p className="font-medium">
+                          {customer.last_device.platform === "ios" ? "iPhone" :
+                            customer.last_device.platform === "android" ? "Android" :
+                              customer.last_device.platform}
+                          {customer.last_device.device_model ? ` — ${customer.last_device.device_model}` : ""}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {customer.last_device.app_version && `App v${customer.last_device.app_version} · `}
+                          Last active {formatRelativeTime(customer.last_device.last_active_at)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground py-2">
+                        No device on record yet — appears after the customer&apos;s next login.
+                      </p>
+                    )}
+                  </div>
+
+                  <Separator />
+
                   {/* Addresses */}
-                  {customer.addresses && customer.addresses.length > 0 && (
-                    <>
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          Addresses ({customer.addresses.length})
-                        </h4>
-                        <div className="space-y-2">
-                          {customer.addresses.map((addr) => (
-                            <div
-                              key={addr.id}
-                              className="p-2.5 rounded-lg border text-xs space-y-0.5"
-                            >
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      Addresses {addresses ? `(${addresses.length})` : ""}
+                    </h4>
+                    {addresses && addresses.length > 0 ? (
+                      <div className="space-y-2">
+                        {addresses.map((addr) => (
+                          <div
+                            key={addr.id}
+                            className="p-2.5 rounded-lg border text-xs space-y-0.5"
+                          >
+                            <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{addr.label}</span>
                                 {addr.is_default && (
                                   <Badge variant="outline" className="text-[9px] h-4">Default</Badge>
                                 )}
                               </div>
-                              <p className="text-muted-foreground">
-                                {addr.line1}
-                                {addr.line2 && `, ${addr.line2}`}
-                              </p>
-                              <p className="text-muted-foreground">
-                                {addr.city}, {addr.state} – {addr.pincode}
-                              </p>
+                              {!addr.is_default && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-[10px]"
+                                  disabled={setDefaultAddress.isPending}
+                                  onClick={() =>
+                                    setDefaultAddress.mutate({ customerId: customer.id, addressId: addr.id })
+                                  }
+                                >
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  Set default
+                                </Button>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                            <p className="text-muted-foreground">
+                              {addr.address_line1}
+                              {addr.address_line2 && `, ${addr.address_line2}`}
+                              {addr.landmark && ` (near ${addr.landmark})`}
+                            </p>
+                            <p className="text-muted-foreground">
+                              {addr.city}{addr.state ? `, ${addr.state}` : ""} – {addr.pincode}
+                            </p>
+                          </div>
+                        ))}
                       </div>
-                      <Separator />
-                    </>
-                  )}
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-4">
+                        No saved addresses
+                      </p>
+                    )}
+                  </div>
+
+                  <Separator />
 
                   {/* Recent Orders */}
                   <div>
@@ -254,71 +363,18 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
                           )
                         })}
                       </div>
-                    ) : customer.recent_orders && customer.recent_orders.length > 0 ? (
-                      <div className="space-y-2">
-                        {customer.recent_orders.map((o) => {
-                          const config = STATUS_CONFIG[o.status as OrderStatus]
-                          return (
-                            <div
-                              key={o.id}
-                              className="flex items-center justify-between p-2.5 rounded-lg border"
-                            >
-                              <div>
-                                <p className="text-sm font-medium">#{o.order_number}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatDate(o.created_at)}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-semibold">{formatINR(o.total_amount)}</p>
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] border-0"
-                                  style={{
-                                    backgroundColor: config?.bg,
-                                    color: config?.text,
-                                  }}
-                                >
-                                  {config?.label ?? o.status}
-                                </Badge>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
                     ) : (
                       <p className="text-xs text-muted-foreground text-center py-4">
                         No orders yet
                       </p>
                     )}
                   </div>
-
-                  {/* Extra info */}
-                  {(customer.platform || customer.app_version || customer.membership_tier) && (
-                    <>
-                      <Separator />
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        {customer.platform && <p>Platform: {customer.platform}</p>}
-                        {customer.app_version && <p>App Version: {customer.app_version}</p>}
-                        {customer.membership_tier && (
-                          <p>
-                            Tier:{" "}
-                            <Badge variant="outline" className="text-[10px]">
-                              {customer.membership_tier}
-                            </Badge>
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
                 </>
               )}
             </div>
           </ScrollArea>
         </SheetContent>
       </Sheet>
-
-
 
       {/* Notify Dialog */}
       <Dialog open={notifyDialog} onOpenChange={setNotifyDialog}>
@@ -358,21 +414,99 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Send Personal Coupon Dialog */}
+      <Dialog open={couponDialog} onOpenChange={setCouponDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Send Personal Coupon</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Coupon Code</Label>
+              <Input
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                placeholder="e.g. WELCOME50"
+                maxLength={30}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Discount Type</Label>
+                <Select
+                  value={couponDiscountType}
+                  onValueChange={(v) => setCouponDiscountType(v as DiscountType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PERCENTAGE">Percentage</SelectItem>
+                    <SelectItem value="FLAT">Flat Amount</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>{couponDiscountType === "PERCENTAGE" ? "Percent Off" : "Amount Off (₹)"}</Label>
+                <Input
+                  type="number"
+                  value={couponDiscountValue}
+                  onChange={(e) => setCouponDiscountValue(e.target.value)}
+                  placeholder={couponDiscountType === "PERCENTAGE" ? "e.g. 20" : "e.g. 50"}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Min Order (optional)</Label>
+                <Input
+                  type="number"
+                  value={couponMinOrder}
+                  onChange={(e) => setCouponMinOrder(e.target.value)}
+                  placeholder="e.g. 199"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Valid Until (optional)</Label>
+                <Input
+                  type="date"
+                  value={couponValidUntil}
+                  onChange={(e) => setCouponValidUntil(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              This coupon will only be usable by {customer?.name ?? "this customer"} — no one else can redeem it.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCouponDialog(false)}>Cancel</Button>
+            <Button
+              onClick={handleSendCoupon}
+              disabled={!couponCode.trim() || !couponDiscountValue || sendCoupon.isPending}
+            >
+              {sendCoupon.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Send Coupon
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
 
-function StatBox({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function StatBox({
+  icon, label, value, tone,
+}: { icon: React.ReactNode; label: string; value: string; tone?: "warn" }) {
   return (
-    <div className="p-2.5 rounded-lg bg-muted/50 text-center">
-      <div className="flex justify-center text-muted-foreground mb-1">{icon}</div>
+    <div className={`p-2.5 rounded-lg text-center ${tone === "warn" ? "bg-amber-50" : "bg-muted/50"}`}>
+      <div className={`flex justify-center mb-1 ${tone === "warn" ? "text-amber-600" : "text-muted-foreground"}`}>{icon}</div>
       <p className="text-sm font-bold">{value}</p>
       <p className="text-[10px] text-muted-foreground">{label}</p>
     </div>
   )
 }
-
-
 
 function ProfileSkeleton() {
   return (

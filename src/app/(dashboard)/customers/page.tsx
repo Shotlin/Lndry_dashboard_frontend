@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import { Search, Download, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,7 @@ import { useCustomers, useExportCustomers, useToggleBlockCustomer } from "@/hook
 import { useSearchFilter } from "@/hooks/useSearchFilter"
 import { useStatusTabs } from "@/hooks/useStatusTabs"
 import { formatRelativeTime, cn } from "@/lib/utils"
+import { CustomerProfileDrawer } from "@/components/customers/CustomerProfileDrawer"
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "Active")
@@ -20,10 +20,10 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function CustomersPage() {
-  const router = useRouter()
   const { search, setSearch, debouncedSearch } = useSearchFilter()
   const { activeTab, setActiveTab } = useStatusTabs({ defaultTab: "all" })
   const [page, setPage] = useState(1)
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
 
   const statusFilter = activeTab === "all" ? undefined : activeTab === "blocked" ? "blocked" : activeTab === "active" ? "active" : undefined
   const { data, isLoading, isError, refetch } = useCustomers({
@@ -184,7 +184,11 @@ export default function CustomersPage() {
                   customers.map((c: any) => {
                     const isBlocked = c.is_blocked || c.status === "BLOCKED"
                     return (
-                      <tr key={c.id} className="hover:bg-[#fafafd] transition-colors cursor-pointer">
+                      <tr
+                        key={c.id}
+                        className="hover:bg-[#fafafd] transition-colors cursor-pointer"
+                        onClick={() => setSelectedCustomerId(c.id)}
+                      >
                         <td className="py-4 px-2">
                           <div className="font-bold text-[#080f14]">{c.name || c.full_name || "—"}</div>
                           <div className="text-[11px] text-[#7e8998] mt-0.5">{c.id?.slice(0, 12)}</div>
@@ -246,6 +250,12 @@ export default function CustomersPage() {
           </div>
         )}
       </div>
+
+      <CustomerProfileDrawer
+        customerId={selectedCustomerId}
+        open={selectedCustomerId !== null}
+        onClose={() => setSelectedCustomerId(null)}
+      />
     </div>
   )
 }

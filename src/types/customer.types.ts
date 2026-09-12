@@ -27,26 +27,40 @@ export interface Customer {
 
 /** Customer detail with expanded info */
 export interface CustomerDetail extends Customer {
-  addresses: CustomerAddress[]
-  recent_orders: CustomerOrder[]
-  avg_rating_given: number | null
-  app_version: string | null
-  platform: string | null
-  membership_tier: string | null
+  cancelled_count: number
+  avg_order_value: number
+  /** Most recently active device (from the `devices` table, updated on
+   * every login), or `null` if the customer has never logged in from a
+   * build that reports device info. */
+  last_device: CustomerDevice | null
 }
 
-/** Customer address */
+/** A customer's most recently active device. */
+export interface CustomerDevice {
+  platform: string
+  /** Raw hardware model identifier (e.g. "SM-S911B" on Android, a
+   * "iPhone15,3"-style identifier on iOS) — not a marketing name. */
+  device_model: string | null
+  app_version: string | null
+  last_active_at: string
+}
+
+/** Customer address — raw backend column names (snake_case, matches
+ * `GET /admin/customers/:id/addresses`'s `SELECT * FROM addresses`). */
 export interface CustomerAddress {
   id: string
   label: string
-  line1: string
-  line2?: string
+  address_line1: string
+  address_line2: string | null
+  landmark: string | null
   city: string
-  state: string
+  state: string | null
   pincode: string
-  lat?: number
-  lng?: number
+  lat?: number | null
+  lng?: number | null
   is_default: boolean
+  created_at: string
+  updated_at: string
 }
 
 /** Lightweight order for customer profile */
