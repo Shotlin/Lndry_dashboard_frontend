@@ -83,6 +83,11 @@ export type {
   UpdateCartMilestonePayload,
 } from "./cart-milestone.types"
 export type {
+  ReconciliationProblemType,
+  CreateReconciliationProblemTypePayload,
+  UpdateReconciliationProblemTypePayload,
+} from "./reconciliation-problem-type.types"
+export type {
   ReferralRewardType,
   ReferralTriggerType,
   ReferralProgramTargetType,
