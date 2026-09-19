@@ -17,7 +17,14 @@ export async function updateSettings(
     "/admin/settings",
     payload
   )
-  return data.data
+  // Only report success if the server echoes back every key it stored — a
+  // 200 that saved nothing must not show "Settings saved".
+  const saved = data.data ?? {}
+  const missing = Object.keys(payload).filter((k) => !(k in saved))
+  if (missing.length > 0) {
+    throw new Error(`Server did not save: ${missing.join(", ")}`)
+  }
+  return saved
 }
 
 /** Is admin two-step (step-up) verification currently enforced? */
