@@ -8,6 +8,7 @@ import {
   BarChart3,
   Bell,
   ChevronLeft,
+  CircleQuestionMark,
   ClipboardCheck,
   ClipboardList,
   FileText,
@@ -24,6 +25,7 @@ import {
   Ticket,
   TrendingUp,
   UserPlus,
+  UserX,
   Users,
   Users2,
   type LucideIcon,
@@ -56,6 +58,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   AlertTriangle,
   BarChart3,
   Bell,
+  CircleQuestionMark,
   ClipboardCheck,
   ClipboardList,
   FileText,
@@ -74,6 +77,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   UserPlus,
   Users,
   Users2,
+  UserX,
 }
 
 const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
@@ -101,6 +105,8 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
       { id: "banners", label: "Banners", href: "/banners", icon: "GalleryHorizontal" },
       { id: "vendorServices", label: "Service Approvals", href: "/vendor-services", icon: "ClipboardCheck" },
       { id: "supportTickets", label: "Support Tickets", href: "/support-tickets", icon: "MessageCircleQuestion" },
+      { id: "helpFaqs", label: "Help & FAQs", href: "/help-faqs", icon: "CircleQuestionMark" },
+      { id: "accountDeletionRequests", label: "Deletion Requests", href: "/account-deletion-requests", icon: "UserX" },
       { id: "notifications", label: "Notifications", href: "/notification-templates", icon: "Bell" },
       { id: "reports", label: "Reports", href: "/reports", icon: "BarChart3" },
       { id: "activityLog", label: "Access and audit", href: "/audit-logs", icon: "Activity" },

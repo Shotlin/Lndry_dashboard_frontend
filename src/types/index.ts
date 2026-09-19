@@ -195,3 +195,13 @@ export type {
   UpdateMemberPayload,
 } from "./rbac.types"
 export { PERMISSION_GROUPS } from "./rbac.types"
+export type {
+  HelpFaq,
+  CreateHelpFaqPayload,
+  UpdateHelpFaqPayload,
+} from "./help-faq.types"
+export type {
+  AccountDeletionStatus,
+  AccountDeletionRequest,
+  AccountDeletionCounts,
+} from "./account-deletion.types"
