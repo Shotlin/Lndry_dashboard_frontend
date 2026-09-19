@@ -41,7 +41,12 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { useSettings, useUpdateSettings } from "@/hooks/useSettings"
+import {
+  useSettings,
+  useUpdateSettings,
+  useStepUpSetting,
+  useSetStepUpSetting,
+} from "@/hooks/useSettings"
 import type { AppSettings, UpdateSettingsPayload } from "@/types/settings.types"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useIsSuperAdmin } from "@/hooks/usePermissions"
@@ -240,6 +245,10 @@ function SettingsContent() {
   // `/shop-financials`, `/shop-transactions`.
   const isSuperAdmin = useIsSuperAdmin()
 
+  // Two-Step Verification switch (persisted server-side)
+  const { data: stepUp, isLoading: stepUpLoading } = useStepUpSetting()
+  const setStepUp = useSetStepUpSetting()
+
   // 2FA State
   const [twoFaEnabled, setTwoFaEnabled] = useState(false)
   const [twoFaSetupOpen, setTwoFaSetupOpen] = useState(false)
@@ -423,6 +432,47 @@ function SettingsContent() {
           )
         })}
       </div>
+
+      {/* Two-Step Verification switch — controls whether protected admin
+          actions (fees, advance amount, settings…) ask for an authenticator
+          code. Persisted in the backend; the 2FA implementation is unchanged. */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            Security
+          </CardTitle>
+        </CardHeader>
+        <Separator />
+        <CardContent className="pt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1 flex-1">
+              <p className="text-sm font-medium">Two-Step Verification</p>
+              <p className="text-xs text-muted-foreground">
+                When ON, protected actions (fees, advance payment, checkout
+                content, other settings) ask for an authenticator code. When
+                OFF, they save without any verification popup — use OFF only
+                while developing and turn it back ON before going live.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span
+                className={`text-xs font-semibold ${
+                  stepUp?.enabled ? "text-green-600" : "text-amber-600"
+                }`}
+              >
+                {stepUpLoading ? "…" : stepUp?.enabled ? "ON" : "OFF"}
+              </span>
+              <Switch
+                checked={stepUp?.enabled ?? false}
+                onCheckedChange={(v) => setStepUp.mutate(v)}
+                disabled={stepUpLoading || setStepUp.isPending || !canManage}
+                aria-label="Two-Step Verification"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 2FA Security Section */}
       <Card>
