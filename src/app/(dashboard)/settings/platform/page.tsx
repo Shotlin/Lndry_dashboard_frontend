@@ -321,6 +321,7 @@ export default function FeesPage() {
           onFeePaiseChange={(v) => set("express_pickup_fee_paise", v ?? 0)}
         />
         <AdvancePaymentSection />
+        <CheckoutContentSection />
       </FeeSection>
     </div>
   )
@@ -997,6 +998,112 @@ function AdvancePaymentSection() {
             <Save className="mr-2 h-4 w-4" />
           )}
           Save advance amount
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section: Checkout content — the advance-payment / refund copy the customer
+// app shows on its payment screen. Same /admin/settings source as the advance
+// amount; {amount} is replaced in the app with the live advance amount.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CHECKOUT_CONTENT_FIELDS = [
+  {
+    key: "checkout_advance_title",
+    label: "Advance message — bold text",
+    fallback: "Pay {amount} now to confirm pickup.",
+  },
+  {
+    key: "checkout_advance_subtitle",
+    label: "Advance message — normal text",
+    fallback: "After the vendor checks your clothes, you'll pay the rest at delivery.",
+  },
+  {
+    key: "checkout_refund_title",
+    label: "Refund message — bold starting text",
+    fallback: "If pickup is not confirmed,",
+  },
+  {
+    key: "checkout_refund_body",
+    label: "Refund message — normal remaining text",
+    fallback: "your {amount} is refunded automatically to your original payment source.",
+  },
+] as const
+
+function CheckoutContentSection() {
+  const { data: settings, isLoading } = useSettings()
+  const updateSettings = useUpdateSettings()
+  const [draft, setDraft] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!settings) return
+    setDraft(
+      Object.fromEntries(
+        CHECKOUT_CONTENT_FIELDS.map((f) => {
+          const saved = settings[f.key]?.value
+          return [f.key, typeof saved === "string" ? saved : f.fallback]
+        })
+      )
+    )
+  }, [settings])
+
+  function save() {
+    if (CHECKOUT_CONTENT_FIELDS.some((f) => !draft[f.key]?.trim())) {
+      toast.error("Checkout messages cannot be empty")
+      return
+    }
+    updateSettings.mutate(
+      Object.fromEntries(
+        CHECKOUT_CONTENT_FIELDS.map((f) => [f.key, draft[f.key].trim()])
+      )
+    )
+  }
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <CardTitle className="text-lg">Checkout Content</CardTitle>
+        <CardDescription>
+          The advance-payment and refund messages on the customer payment
+          screen. Use <code className="rounded bg-muted px-1">{"{amount}"}</code>{" "}
+          where the advance amount should appear — it updates automatically
+          when you change the advance amount above.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-40 w-full" />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {CHECKOUT_CONTENT_FIELDS.map((f) => (
+              <div key={f.key} className="space-y-2">
+                <Label htmlFor={f.key}>{f.label}</Label>
+                <Input
+                  id={f.key}
+                  value={draft[f.key] ?? ""}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [f.key]: e.target.value }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={save}
+          disabled={updateSettings.isPending || isLoading}
+        >
+          {updateSettings.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
+          Save checkout content
         </Button>
       </CardContent>
     </Card>
