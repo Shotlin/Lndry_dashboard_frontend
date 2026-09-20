@@ -23,22 +23,24 @@ export const VENDOR_TYPE_LABEL: Record<VendorType, string> = {
   EXCLUSIVE: "Exclusive",
 }
 
+// Every type is a full LNDRY marketplace vendor. The type only controls how their POS
+// (in-store / walk-in sales) connects to LNDRY — never their Vendor App or marketplace business.
 const DESCRIPTION: Record<VendorType, string> = {
   STANDARD:
-    "Standalone POS only. Counter sales stay in the vendor's own POS and never appear in the LNDRY customer app. No access to LNDRY wallets.",
+    "Full LNDRY marketplace vendor. POS in-store transactions remain independent and cannot access LNDRY customer wallet.",
   PARTNER:
-    "Connected to LNDRY. Counter sales appear in the customer's LNDRY app (same phone number) and the LNDRY wallet can be used at the counter.",
+    "Full LNDRY marketplace vendor with connected POS, customer order sync and wallet access.",
   EXCLUSIVE:
-    "Same full LNDRY connection as Partner: counter sales sync to the customer app and the LNDRY wallet is available.",
+    "Full LNDRY marketplace vendor with connected POS, customer order sync and wallet access.",
 }
 
+const UNCHANGED_NOTE =
+  "Their Vendor App, listed services, LNDRY online orders and customers' normal app payments (including the LNDRY wallet at app checkout) are not affected."
+
 const CONFIRM_NOTE: Record<VendorType, string> = {
-  STANDARD:
-    "New counter sales will stop syncing to the LNDRY customer app and the vendor will lose LNDRY wallet access (lookup, redemption and payment). Sales already synced stay in the customer's history.",
-  PARTNER:
-    "New counter sales will sync to the customer's LNDRY app and the vendor will get LNDRY wallet access. Earlier POS-only sales stay private.",
-  EXCLUSIVE:
-    "New counter sales will sync to the customer's LNDRY app and the vendor will get LNDRY wallet access. Earlier POS-only sales stay private.",
+  STANDARD: `This only changes the vendor's POS in-store sales: new walk-in sales will stop syncing to the customer's LNDRY app, and the POS will no longer see or use the customer's LNDRY wallet. Sales already synced stay in the customer's history. ${UNCHANGED_NOTE}`,
+  PARTNER: `This only changes the vendor's POS in-store sales: new walk-in sales will sync to the customer's LNDRY app, and the POS can see and use the customer's LNDRY wallet. Earlier walk-in sales stay private. ${UNCHANGED_NOTE}`,
+  EXCLUSIVE: `This only changes the vendor's POS in-store sales: new walk-in sales will sync to the customer's LNDRY app, and the POS can see and use the customer's LNDRY wallet. Earlier walk-in sales stay private. ${UNCHANGED_NOTE}`,
 }
 
 export function VendorTypeBadge({ type }: { type?: VendorType }) {
@@ -53,9 +55,10 @@ export function VendorTypeBadge({ type }: { type?: VendorType }) {
 }
 
 /**
- * Admin control for a vendor's type. The change is saved by the backend, which
- * enforces it on every request — the vendor's POS picks it up on its next
- * refresh, with no redeploy.
+ * Admin control for a vendor's type — how deeply their POS walk-in sales connect to LNDRY
+ * (order sync + wallet at the counter). It does not limit the vendor's marketplace business.
+ * Saved by the backend, which enforces it on every request; the vendor's POS picks it up on its
+ * next refresh, with no redeploy.
  */
 export function VendorTypeControl({ vendorId, current }: { vendorId: string; current: VendorType }) {
   const setType = useSetVendorType(vendorId)
