@@ -5,6 +5,7 @@ import { CalendarClock, FlaskConical, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CampaignsTab } from "@/components/notifications/CampaignsTab"
+import { OrderLifecycleTab } from "@/components/notifications/OrderLifecycleTab"
 import { SendNotificationDialog, type SendMode } from "@/components/notifications/SendNotificationDialog"
 import { SendTestDialog } from "@/components/notifications/SendTestDialog"
 import { TemplatesTab } from "@/components/notifications/TemplatesTab"
@@ -61,10 +62,14 @@ export default function NotificationCenterPage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="campaigns">Campaigns &amp; history</TabsTrigger>
+          <TabsTrigger value="lifecycle">Order lifecycle</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
         </TabsList>
         <TabsContent value="campaigns" className="mt-4">
           <CampaignsTab onEditDraft={(draft) => openCompose("now", { draft })} />
+        </TabsContent>
+        <TabsContent value="lifecycle" className="mt-4">
+          <OrderLifecycleTab />
         </TabsContent>
         <TabsContent value="templates" className="mt-4">
           <TemplatesTab
