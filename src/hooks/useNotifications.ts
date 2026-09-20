@@ -18,8 +18,15 @@ import {
   countAudience,
   searchRecipients,
   sendTest,
+  getLifecycleEvents,
+  saveLifecycleEvent,
+  resetLifecycleEvent,
+  testLifecycleEvent,
+  getLifecycleLog,
 } from "@/services/notifications.service"
 import type {
+  LifecycleLogStatus,
+  SaveLifecyclePayload,
   AudienceSpec,
   CampaignStatus,
   CreateCampaignPayload,
@@ -214,5 +221,56 @@ export function useSendTest() {
   return useMutation({
     mutationFn: (payload: TestSendPayload) => sendTest(payload),
     onError: (e) => toast.error(notificationErrorMessage(e, "Test could not be sent")),
+  })
+}
+
+/* ── Order lifecycle notifications ────────────────── */
+
+export function useLifecycleEvents() {
+  return useQuery({
+    queryKey: [...KEY, "lifecycle"] as const,
+    queryFn: getLifecycleEvents,
+    staleTime: 30_000,
+  })
+}
+
+export function useSaveLifecycleEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ eventKey, payload }: { eventKey: string; payload: SaveLifecyclePayload }) =>
+      saveLifecycleEvent(eventKey, payload),
+    onSuccess: () => {
+      toast.success("Saved — new orders use this wording right away")
+      qc.invalidateQueries({ queryKey: [...KEY, "lifecycle"] })
+    },
+    onError: (e) => toast.error(notificationErrorMessage(e, "Could not save")),
+  })
+}
+
+export function useResetLifecycleEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (eventKey: string) => resetLifecycleEvent(eventKey),
+    onSuccess: () => {
+      toast.success("Restored the default wording")
+      qc.invalidateQueries({ queryKey: [...KEY, "lifecycle"] })
+    },
+    onError: (e) => toast.error(notificationErrorMessage(e, "Could not restore the default")),
+  })
+}
+
+export function useTestLifecycleEvent() {
+  return useMutation({
+    mutationFn: ({ eventKey, userId }: { eventKey: string; userId: string }) => testLifecycleEvent(eventKey, userId),
+    onError: (e) => toast.error(notificationErrorMessage(e, "Test could not be sent")),
+  })
+}
+
+export function useLifecycleLog(params: { page: number; limit: number; event?: string; status?: LifecycleLogStatus; order?: string }) {
+  return useQuery({
+    queryKey: [...KEY, "lifecycle-log", params] as const,
+    queryFn: () => getLifecycleLog(params),
+    staleTime: 10_000,
+    placeholderData: (prev) => prev,
   })
 }

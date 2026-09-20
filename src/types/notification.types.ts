@@ -7,6 +7,10 @@ export type LinkType =
   | "home"
   | "orders"
   | "order_details"
+  | "order_tracking"
+  | "order_approval"
+  | "order_payment"
+  | "order_review"
   | "vendor_details"
   | "offers"
   | "wallet"
@@ -179,4 +183,73 @@ export interface TestSendPayload {
   body?: string
   image_url?: string
   link?: DeepLink | null
+}
+
+/* ── Order lifecycle notifications ───────────────────
+ * Mirrors Lndry_backend/src/modules/lifecycle-notifications.
+ */
+
+export type LifecycleRecipient = "CUSTOMER" | "VENDOR" | "CAPTAIN"
+
+export interface LifecyclePlaceholder {
+  name: string
+  description: string
+}
+
+export interface LifecycleEvent {
+  eventKey: string
+  group: "Customer" | "Vendor" | "Captain"
+  label: string
+  /** When the platform sends it. */
+  trigger: string
+  defaultRecipient: LifecycleRecipient
+  recipientType: LifecycleRecipient
+  enabled: boolean
+  title: string
+  body: string
+  defaultTitle: string
+  defaultBody: string
+  linkType: LinkType | null
+  defaultLinkType: LinkType
+  linkParams: { route?: string }
+  imageUrl: string | null
+  /** True once an admin has saved their own version. */
+  isCustom: boolean
+  updatedAt: string | null
+  placeholders: LifecyclePlaceholder[]
+}
+
+export interface SaveLifecyclePayload {
+  title?: string
+  body?: string
+  enabled?: boolean
+  recipient_type?: LifecycleRecipient
+  link?: { type: LinkType; params?: { route?: string } } | null
+  image_url?: string | null
+}
+
+export type LifecycleLogStatus = "PENDING" | "SENT" | "PARTIAL" | "FAILED" | "NO_DEVICE" | "SKIPPED"
+
+export interface LifecycleLogRow {
+  id: string
+  event_key: string
+  label: string
+  recipient_type: LifecycleRecipient
+  status: LifecycleLogStatus
+  skip_reason: string | null
+  title: string | null
+  body: string | null
+  devices_total: number
+  devices_sent: number
+  devices_failed: number
+  error_summary: string | null
+  attempts: number
+  created_at: string
+  sent_at: string | null
+  order_id: string | null
+  order_number: string | null
+  recipient_name: string | null
+  recipient_phone: string | null
+  apps: string | null
+  opened: number
 }
