@@ -1,6 +1,9 @@
 import api from "@/lib/api"
 import type { ApiResponse } from "@/types"
 
+/** How much of the LNDRY ecosystem a vendor's POS is connected to. */
+export type VendorType = "STANDARD" | "PARTNER" | "EXCLUSIVE"
+
 export interface Vendor {
   id: string
   name: string
@@ -40,6 +43,7 @@ export interface Vendor {
   today_orders_count?: number
   acceptance_rate?: number
   express_pickup_available?: boolean
+  vendor_type?: VendorType
 }
 
 export interface KycDocument {
@@ -214,6 +218,19 @@ export async function adminSetDailyCapacity(id: string, maxOrdersPerDay: number)
 export async function adminSetExpressPickup(id: string, available: boolean): Promise<{ express_pickup_available: boolean }> {
   const { data } = await api.put<ApiResponse<{ express_pickup_available: boolean }>>(`/vendors/admin/${id}/express-pickup`, {
     available,
+  })
+  return data.data
+}
+
+export interface VendorTypeResult {
+  vendor_type: VendorType
+  appSync: boolean
+  walletAccess: boolean
+}
+
+export async function adminSetVendorType(id: string, vendorType: VendorType): Promise<VendorTypeResult> {
+  const { data } = await api.put<ApiResponse<VendorTypeResult>>(`/vendors/admin/${id}/vendor-type`, {
+    vendor_type: vendorType,
   })
   return data.data
 }

@@ -15,6 +15,7 @@ import { VendorCapacityTab } from "@/components/vendors/VendorCapacityTab"
 import { VendorEmployeesTab } from "@/components/vendors/VendorEmployeesTab"
 import { VendorDetailsSection } from "@/components/vendors/VendorDetailsSection"
 import { VendorServicesTab } from "@/components/vendors/VendorServicesTab"
+import { VendorTypeControl } from "@/components/vendors/VendorTypeControl"
 
 function DocumentStatusBadge({ status }: { status: string }) {
   if (status === "APPROVED") return <Badge className="bg-success-bg text-success border-0">VERIFIED</Badge>
@@ -71,6 +72,9 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
                   </Badge>
                 )}
               </div>
+              {vendor.status === "APPROVED" && vendor.vendor_type && (
+                <VendorTypeControl vendorId={params.vendorId} current={vendor.vendor_type} />
+              )}
               {vendor.status === "APPROVED" && (
                 <div className="flex items-center gap-2 rounded-full border px-3 py-1.5">
                   <Zap className="h-3.5 w-3.5 text-brand-500" />
