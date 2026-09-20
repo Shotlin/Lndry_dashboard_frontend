@@ -6,30 +6,44 @@ import {
   getTemplates,
   createTemplate,
   updateTemplate,
+  duplicateTemplate,
   deleteTemplate,
   getCampaigns,
-  sendBulk,
-  scheduleCampaign,
-  getSegmentCount,
+  getCampaign,
+  createCampaign,
+  updateDraft,
+  sendDraft,
+  cancelCampaign,
+  deleteCampaign,
+  countAudience,
+  searchRecipients,
+  sendTest,
 } from "@/services/notifications.service"
 import type {
+  AudienceSpec,
+  CampaignStatus,
+  CreateCampaignPayload,
   CreateTemplatePayload,
+  RecipientType,
+  TestSendPayload,
   UpdateTemplatePayload,
-  SendBulkPayload,
-  ScheduleCampaignPayload,
-  CampaignSegment,
 } from "@/types/notification.types"
 
-function useShopKey(): string {
-  return "ALL"
+/** Pull the backend's plain-language message out of an API error. */
+export function notificationErrorMessage(error: unknown, fallback = "Something went wrong"): string {
+  const resp = (error as { response?: { data?: { message?: string } } })?.response
+  if (resp?.data?.message) return resp.data.message
+  if (error instanceof Error && error.message) return error.message
+  return fallback
 }
+
+const KEY = ["notifications"] as const
 
 /* ── Templates ───────────────────────────────────── */
 
 export function useTemplates() {
-  const shopKey = useShopKey()
   return useQuery({
-    queryKey: ["notifications", shopKey, "templates"] as const,
+    queryKey: [...KEY, "templates"] as const,
     queryFn: getTemplates,
     staleTime: 30_000,
     placeholderData: (prev) => prev,
@@ -42,22 +56,33 @@ export function useCreateTemplate() {
     mutationFn: (payload: CreateTemplatePayload) => createTemplate(payload),
     onSuccess: () => {
       toast.success("Template created")
-      qc.invalidateQueries({ queryKey: ["notifications"] })
+      qc.invalidateQueries({ queryKey: KEY })
     },
-    onError: () => toast.error("Failed to create template"),
+    onError: (e) => toast.error(notificationErrorMessage(e, "Failed to create template")),
   })
 }
 
 export function useUpdateTemplate() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UpdateTemplatePayload }) =>
-      updateTemplate(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateTemplatePayload }) => updateTemplate(id, payload),
     onSuccess: () => {
-      toast.success("Template updated")
-      qc.invalidateQueries({ queryKey: ["notifications"] })
+      toast.success("Template saved")
+      qc.invalidateQueries({ queryKey: KEY })
     },
-    onError: () => toast.error("Failed to update template"),
+    onError: (e) => toast.error(notificationErrorMessage(e, "Failed to save template")),
+  })
+}
+
+export function useDuplicateTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => duplicateTemplate(id),
+    onSuccess: () => {
+      toast.success("Template duplicated")
+      qc.invalidateQueries({ queryKey: KEY })
+    },
+    onError: (e) => toast.error(notificationErrorMessage(e, "Failed to duplicate template")),
   })
 }
 
@@ -67,55 +92,127 @@ export function useDeleteTemplate() {
     mutationFn: (id: string) => deleteTemplate(id),
     onSuccess: () => {
       toast.success("Template deleted")
-      qc.invalidateQueries({ queryKey: ["notifications"] })
+      qc.invalidateQueries({ queryKey: KEY })
     },
-    onError: () => toast.error("Failed to delete template"),
+    onError: (e) => toast.error(notificationErrorMessage(e, "Failed to delete template")),
   })
 }
 
 /* ── Campaigns ───────────────────────────────────── */
 
-export function useCampaigns(page = 1, limit = 20) {
-  const shopKey = useShopKey()
+export function useCampaigns(page = 1, limit = 20, status?: CampaignStatus) {
   return useQuery({
-    queryKey: ["notifications", shopKey, "campaigns", page, limit] as const,
-    queryFn: () => getCampaigns(page, limit),
-    staleTime: 30_000,
+    queryKey: [...KEY, "campaigns", page, limit, status ?? "all"] as const,
+    queryFn: () => getCampaigns(page, limit, status),
+    staleTime: 10_000,
     placeholderData: (prev) => prev,
-  })
-}
-
-export function useSendBulk() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (payload: SendBulkPayload) => sendBulk(payload),
-    onSuccess: (data) => {
-      toast.success(`Notification queued for ${data.target_count ?? data.sent_count ?? '?'} users`)
-      qc.invalidateQueries({ queryKey: ["notifications"] })
+    // A campaign that is sending or waiting for its time keeps changing.
+    refetchInterval: (query) => {
+      const list = query.state.data?.campaigns ?? []
+      return list.some((c) => c.status === "SENDING" || c.status === "SCHEDULED") ? 10_000 : false
     },
-    onError: () => toast.error("Failed to send notification"),
   })
 }
 
-export function useScheduleCampaign() {
+export function useCampaign(id: string | null) {
+  return useQuery({
+    queryKey: [...KEY, "campaign", id] as const,
+    queryFn: () => getCampaign(id as string),
+    enabled: !!id,
+    refetchInterval: (query) => (query.state.data?.status === "SENDING" ? 5_000 : false),
+  })
+}
+
+export function useCreateCampaign() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: ScheduleCampaignPayload) => scheduleCampaign(payload),
+    mutationFn: (payload: CreateCampaignPayload) => createCampaign(payload),
+    onSuccess: (c) => {
+      toast.success(
+        c.status === "SCHEDULED" ? "Notification scheduled"
+        : c.status === "DRAFT" ? "Draft saved"
+        : `Sending to ${c.device_count} device${c.device_count === 1 ? "" : "s"}`
+      )
+      qc.invalidateQueries({ queryKey: KEY })
+    },
+    onError: (e) => toast.error(notificationErrorMessage(e, "Could not create the notification")),
+  })
+}
+
+export function useUpdateDraft() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof updateDraft>[1] }) => updateDraft(id, payload),
     onSuccess: () => {
-      toast.success("Campaign scheduled")
-      qc.invalidateQueries({ queryKey: ["notifications"] })
+      toast.success("Draft updated")
+      qc.invalidateQueries({ queryKey: KEY })
     },
-    onError: () => toast.error("Failed to schedule campaign"),
+    onError: (e) => toast.error(notificationErrorMessage(e, "Could not update the draft")),
   })
 }
 
-export function useSegmentCount(segment: CampaignSegment, segmentValue?: string) {
-  const shopKey = useShopKey()
+export function useSendDraft() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: string; mode: "SEND_NOW" | "SCHEDULE"; scheduledAt?: string }) => sendDraft(id, payload),
+    onSuccess: (c) => {
+      toast.success(c.status === "SCHEDULED" ? "Notification scheduled" : "Sending now")
+      qc.invalidateQueries({ queryKey: KEY })
+    },
+    onError: (e) => toast.error(notificationErrorMessage(e, "Could not send the draft")),
+  })
+}
+
+export function useCancelCampaign() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => cancelCampaign(id),
+    onSuccess: () => {
+      toast.success("Scheduled notification cancelled")
+      qc.invalidateQueries({ queryKey: KEY })
+    },
+    onError: (e) => toast.error(notificationErrorMessage(e, "Could not cancel")),
+  })
+}
+
+export function useDeleteCampaign() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => deleteCampaign(id),
+    onSuccess: () => {
+      toast.success("Deleted")
+      qc.invalidateQueries({ queryKey: KEY })
+    },
+    onError: (e) => toast.error(notificationErrorMessage(e, "Could not delete")),
+  })
+}
+
+/* ── Audience / recipients / test ─────────────────── */
+
+/** Live numbers for the audience being composed (real registered devices). */
+export function useAudienceCount(audience: AudienceSpec | null) {
   return useQuery({
-    queryKey: ["notifications", shopKey, "segment-count", segment, segmentValue] as const,
-    queryFn: () => getSegmentCount(segment, segmentValue),
-    enabled: segment !== "cart_not_empty",
-    staleTime: 60_000,
+    queryKey: [...KEY, "audience-count", audience] as const,
+    queryFn: () => countAudience(audience as AudienceSpec),
+    enabled: !!audience,
+    staleTime: 15_000,
+    retry: false,
+  })
+}
+
+export function useRecipientSearch(q: string, type: RecipientType, enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "recipients", type, q] as const,
+    queryFn: () => searchRecipients(q, type),
+    enabled: enabled && q.trim().length >= 2,
+    staleTime: 20_000,
     placeholderData: (prev) => prev,
+  })
+}
+
+export function useSendTest() {
+  return useMutation({
+    mutationFn: (payload: TestSendPayload) => sendTest(payload),
+    onError: (e) => toast.error(notificationErrorMessage(e, "Test could not be sent")),
   })
 }

@@ -1,32 +1,62 @@
-/* ── Notification Types ──────────────────────────── */
+/* ── Notification Center types ──────────────────────
+ * Mirrors the backend contract in Lndry_backend/src/utils/deeplink.js and
+ * src/modules/admin/notifications/audience.js.
+ */
 
-export type NotificationType =
-  | "system"
-  | "offer"
-  | "product_offer"
-  | "category_offer"
-  | "store_offer"
-  | "order_update"
-  | "rider_update"
+export type LinkType =
+  | "home"
+  | "orders"
+  | "order_details"
+  | "vendor_details"
+  | "offers"
   | "wallet"
-  | "coupon"
-  | "cart_reminder"
-  | "general"
-  | "PUSH"
-  | "SMS"
-  | "EMAIL"
-  | "IN_APP"
+  | "notifications"
+  | "help"
+  | "profile"
+  | "refer_earn"
+  | "rider_job"
+  | "route"
 
-export type CampaignSegment =
-  | "all_customers"
-  | "specific_user"
-  | "store_customers"
-  | "inactive_customers"
-  | "cart_not_empty"
-  | "all"
-  | "new"
-  | "inactive"
-  | "high_value"
+export interface LinkParams {
+  orderId?: string
+  vendorId?: string
+  route?: string
+}
+
+/** Where a tap on the notification should open. */
+export interface DeepLink {
+  type: LinkType
+  params?: LinkParams
+}
+
+export type AudienceKind =
+  | "ALL_CUSTOMERS"
+  | "ALL_VENDORS"
+  | "ALL_CAPTAINS"
+  | "USER"
+  | "VENDOR"
+  | "VENDOR_CAPTAINS"
+  | "SEGMENT"
+  | "LOCATION"
+
+export interface AudienceSpec {
+  kind: AudienceKind
+  userId?: string
+  vendorId?: string
+  segmentId?: string
+  target?: "customers" | "vendors" | "captains"
+  city?: string
+  pincode?: string
+}
+
+export type CampaignStatus =
+  | "DRAFT"
+  | "QUEUED"
+  | "SENDING"
+  | "SENT"
+  | "FAILED"
+  | "SCHEDULED"
+  | "CANCELLED"
 
 export interface NotificationTemplate {
   id: string
@@ -34,9 +64,11 @@ export interface NotificationTemplate {
   title: string
   body: string
   type: "PUSH" | "SMS" | "EMAIL" | "IN_APP"
-  variables: string // JSON string of array
+  variables: string[] | string | null
   image_url?: string | null
   deep_link?: string | null
+  deep_link_type?: LinkType | null
+  deep_link_params?: LinkParams | null
   is_active?: boolean
   created_by?: string
   created_at: string
@@ -47,14 +79,16 @@ export interface CreateTemplatePayload {
   name: string
   title: string
   body: string
-  type: "PUSH" | "SMS" | "EMAIL" | "IN_APP"
-  variables?: string[]
+  type?: "PUSH"
   image_url?: string
-  deep_link?: string
+  deep_link_type?: LinkType
+  deep_link_params?: LinkParams
 }
 
-export type UpdateTemplatePayload = Partial<CreateTemplatePayload> & {
+export type UpdateTemplatePayload = Omit<Partial<CreateTemplatePayload>, "deep_link_type"> & {
   is_active?: boolean
+  /** `null` clears the destination. */
+  deep_link_type?: LinkType | null
 }
 
 export interface NotificationCampaign {
@@ -64,14 +98,18 @@ export interface NotificationCampaign {
   type?: string
   image_url?: string | null
   deep_link?: string | null
-  segment?: string | null
-  target_type?: string | null
+  deep_link_type?: LinkType | null
+  deep_link_params?: LinkParams | null
+  audience?: AudienceSpec | null
+  target_app?: "customer" | "partner" | null
   target_count: number
+  device_count: number
   sent_count: number
   opened_count: number | null
   failed_count: number | null
-  failure_summary?: Record<string, unknown> | null
-  status: "QUEUED" | "SENDING" | "SENT" | "FAILED" | "SCHEDULED" | "CANCELLED"
+  open_rate: number
+  failure_summary?: { reason?: string; invalidTokensDeactivated?: number } | null
+  status: CampaignStatus
   template_id?: string | null
   scheduled_at?: string | null
   expires_at?: string | null
@@ -82,26 +120,63 @@ export interface NotificationCampaign {
   updated_at?: string
 }
 
-export interface SendBulkPayload {
+export interface CampaignDetail extends NotificationCampaign {
+  breakdown: { app_type: string | null; status: string; count: number; opened: number }[]
+  errors: { error_code: string | null; count: number }[]
+}
+
+export interface CreateCampaignPayload {
   title: string
   body: string
-  segment: CampaignSegment
-  segmentValue?: string
-  segmentFilters?: Record<string, unknown>
   image_url?: string
-  deep_link?: string
-  type?: string
+  link?: DeepLink | null
+  audience: AudienceSpec
   expires_at?: string
   template_id?: string
-  target_phones?: string[]
+  mode: "SEND_NOW" | "SCHEDULE" | "DRAFT"
+  scheduledAt?: string
 }
 
-export interface ScheduleCampaignPayload extends SendBulkPayload {
-  scheduledAt: string
+export interface AudienceCount {
+  users: number
+  devices: number
+  customer_devices: number
+  partner_devices: number
+  android_devices: number
+  ios_devices: number
 }
 
-export interface SegmentCount {
-  segment: string
-  segmentValue?: string
-  count: number
+export type RecipientType = "customer" | "vendor" | "captain" | "any"
+
+export interface Recipient {
+  id: string
+  name: string | null
+  phone?: string | null
+  email?: string | null
+  city?: string | null
+  pincode?: string | null
+  /** Devices currently registered for push (0 = cannot receive anything). */
+  devices: number
+}
+
+export type TestStatus = "SENT" | "FAILED" | "INVALID_TOKEN" | "NO_DEVICE" | "NOT_CONFIGURED"
+
+export interface TestSendResult {
+  status: TestStatus
+  user: { id: string; name: string | null; phone: string | null }
+  devices: {
+    app: string | null
+    platform: string | null
+    model: string | null
+    status: "SENT" | "FAILED" | "INVALID_TOKEN"
+    error: string | null
+  }[]
+}
+
+export interface TestSendPayload {
+  userId: string
+  title?: string
+  body?: string
+  image_url?: string
+  link?: DeepLink | null
 }

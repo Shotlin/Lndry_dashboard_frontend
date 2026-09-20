@@ -164,10 +164,14 @@ export type {
   CreateTemplatePayload,
   UpdateTemplatePayload,
   NotificationCampaign,
-  SendBulkPayload,
-  ScheduleCampaignPayload,
-  SegmentCount,
-  CampaignSegment,
+  CampaignDetail,
+  CampaignStatus,
+  CreateCampaignPayload,
+  AudienceSpec,
+  AudienceKind,
+  AudienceCount,
+  DeepLink,
+  LinkType,
 } from "./notification.types"
 export type {
   AppSettings,
