@@ -58,6 +58,7 @@ import {
   type UpdateGarmentTypePayload,
 } from "@/services/garment-types.service"
 import { deleteImage, uploadImage } from "@/services/uploads.service"
+import { AssistedBookingCard } from "@/components/assisted-booking/AssistedBookingCard"
 import type { Category } from "@/types"
 
 /**
@@ -588,6 +589,9 @@ export default function LaundryCategoriesPage() {
           </Table>
         </div>
       </div>
+
+      {/* Assisted booking ("Book With Expert Check") — on/off, wording, vendors */}
+      <AssistedBookingCard />
 
       {/* Category create/edit dialog */}
       <Dialog open={categoryDialogOpen} onOpenChange={(open) => (open ? setCategoryDialogOpen(true) : closeCategoryDialog())}>

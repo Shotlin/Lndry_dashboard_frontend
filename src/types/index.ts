@@ -209,3 +209,9 @@ export type {
   AccountDeletionRequest,
   AccountDeletionCounts,
 } from "./account-deletion.types"
+export type {
+  AssistedBookingScope,
+  AssistedBookingVendor,
+  AssistedBookingSettings,
+  UpdateAssistedBookingPayload,
+} from "./assisted-booking.types"
