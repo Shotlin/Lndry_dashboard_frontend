@@ -44,6 +44,11 @@ export interface Vendor {
   acceptance_rate?: number
   express_pickup_available?: boolean
   vendor_type?: VendorType
+  /** Optional Google Business Profile connection — undefined/null on every vendor that hasn't linked one. */
+  google_business_url?: string | null
+  google_rating?: number | string | null
+  google_review_count?: number | null
+  google_business_name?: string | null
 }
 
 export interface KycDocument {
@@ -231,6 +236,29 @@ export interface VendorTypeResult {
 export async function adminSetVendorType(id: string, vendorType: VendorType): Promise<VendorTypeResult> {
   const { data } = await api.put<ApiResponse<VendorTypeResult>>(`/vendors/admin/${id}/vendor-type`, {
     vendor_type: vendorType,
+  })
+  return data.data
+}
+
+export interface GoogleBusinessResult {
+  cleared?: boolean
+  vendor?: Vendor
+}
+
+export interface GoogleBusinessInput {
+  url: string
+  rating?: number | null
+  reviewCount?: number | null
+  businessName?: string | null
+}
+
+/** Saves (or, with a blank url, removes) a vendor's admin-typed Google Business Profile info. */
+export async function adminSetGoogleBusiness(id: string, input: GoogleBusinessInput): Promise<GoogleBusinessResult> {
+  const { data } = await api.put<ApiResponse<GoogleBusinessResult>>(`/vendors/admin/${id}/google-business`, {
+    google_business_url: input.url,
+    google_rating: input.rating ?? null,
+    google_review_count: input.reviewCount ?? null,
+    google_business_name: input.businessName ?? null,
   })
   return data.data
 }

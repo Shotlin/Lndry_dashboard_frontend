@@ -16,6 +16,7 @@ import { VendorEmployeesTab } from "@/components/vendors/VendorEmployeesTab"
 import { VendorDetailsSection } from "@/components/vendors/VendorDetailsSection"
 import { VendorServicesTab } from "@/components/vendors/VendorServicesTab"
 import { VendorTypeControl } from "@/components/vendors/VendorTypeControl"
+import { GoogleBusinessControl } from "@/components/vendors/GoogleBusinessControl"
 
 function DocumentStatusBadge({ status }: { status: string }) {
   if (status === "APPROVED") return <Badge className="bg-success-bg text-success border-0">VERIFIED</Badge>
@@ -88,6 +89,10 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
               )}
             </div>
           </div>
+
+          {vendor.status === "APPROVED" && (
+            <GoogleBusinessControl vendorId={params.vendorId} vendor={vendor} />
+          )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="h-10 w-full justify-start overflow-x-auto flex-nowrap border-b bg-transparent p-0 rounded-none">
