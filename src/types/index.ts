@@ -215,3 +215,8 @@ export type {
   AssistedBookingSettings,
   UpdateAssistedBookingPayload,
 } from "./assisted-booking.types"
+export type {
+  AppReleaseApp,
+  AppRelease,
+  UploadAppReleaseParams,
+} from "./app-release.types"

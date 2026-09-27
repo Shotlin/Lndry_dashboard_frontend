@@ -74,6 +74,7 @@ export const ROUTE_GUARDS: RouteGuard[] = [
   { pattern: /^\/first-time-offers$/, anyOf: ["settings.read"] },
   { pattern: /^\/reconciliation-problem-types$/, anyOf: ["settings.write"] },
   { pattern: /^\/help-faqs$/, anyOf: ["settings.write"] },
+  { pattern: /^\/app-releases$/, anyOf: ["settings.read"] },
   { pattern: /^\/account-deletion-requests$/, anyOf: ["customers.write"] },
   { pattern: /^\/incomplete-orders$/, anyOf: ["orders.read"] },
   { pattern: /^\/banners$/, anyOf: ["settings.read"] },
