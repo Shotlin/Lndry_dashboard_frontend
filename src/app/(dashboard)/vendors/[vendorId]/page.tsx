@@ -16,6 +16,7 @@ import { VendorEmployeesTab } from "@/components/vendors/VendorEmployeesTab"
 import { VendorDetailsSection } from "@/components/vendors/VendorDetailsSection"
 import { VendorServicesTab } from "@/components/vendors/VendorServicesTab"
 import { VendorTypeControl } from "@/components/vendors/VendorTypeControl"
+import { VendorOfferingControl } from "@/components/vendors/VendorOfferingControl"
 import { GoogleBusinessControl } from "@/components/vendors/GoogleBusinessControl"
 
 function DocumentStatusBadge({ status }: { status: string }) {
@@ -75,6 +76,15 @@ export default function VendorDetailPage({ params }: { params: { vendorId: strin
               </div>
               {vendor.status === "APPROVED" && vendor.vendor_type && (
                 <VendorTypeControl vendorId={params.vendorId} current={vendor.vendor_type} />
+              )}
+              {vendor.status === "APPROVED" && vendor.offering && (
+                <VendorOfferingControl
+                  vendorId={params.vendorId}
+                  offering={vendor.offering}
+                  onboardingStatus={vendor.pos_onboarding_status}
+                  planName={vendor.pos_plan_name}
+                  validTo={vendor.pos_valid_to}
+                />
               )}
               {vendor.status === "APPROVED" && (
                 <div className="flex items-center gap-2 rounded-full border px-3 py-1.5">

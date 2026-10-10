@@ -6,8 +6,10 @@ import {
   getVendorDetails,
   adminSetExpressPickup,
   adminSetVendorType,
+  adminSetVendorOffering,
   adminSetGoogleBusiness,
   type VendorType,
+  type VendorOfferingInput,
   type GoogleBusinessInput,
 } from "@/services/vendors.service"
 
@@ -45,6 +47,21 @@ export function useSetVendorType(vendorId: string) {
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to update vendor type")
+    },
+  })
+}
+
+export function useSetVendorOffering(vendorId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: VendorOfferingInput) => adminSetVendorOffering(vendorId, input),
+    onSuccess: () => {
+      toast.success("App access updated")
+      queryClient.invalidateQueries({ queryKey: ["vendors", "detail", vendorId] })
+      queryClient.invalidateQueries({ queryKey: ["vendors", "admin-list"] })
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update app access")
     },
   })
 }
