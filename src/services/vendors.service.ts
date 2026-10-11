@@ -3,6 +3,9 @@ import type { ApiResponse } from "@/types"
 
 /** How much of the LNDRY ecosystem a vendor's POS is connected to. */
 export type VendorType = "STANDARD" | "PARTNER" | "EXCLUSIVE"
+/** Which LNDRY products the vendor may use in the Vendor App. A different axis from VendorType. */
+export type VendorOffering = "MARKETPLACE" | "POS" | "BOTH"
+export type PosOnboardingStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED"
 
 export interface Vendor {
   id: string
@@ -44,6 +47,11 @@ export interface Vendor {
   acceptance_rate?: number
   express_pickup_available?: boolean
   vendor_type?: VendorType
+  offering?: VendorOffering
+  pos_onboarding_status?: PosOnboardingStatus
+  pos_plan_name?: string | null
+  /** YYYY-MM-DD */
+  pos_valid_to?: string | null
   /** Optional Google Business Profile connection — undefined/null on every vendor that hasn't linked one. */
   google_business_url?: string | null
   google_rating?: number | string | null
@@ -236,6 +244,31 @@ export interface VendorTypeResult {
 export async function adminSetVendorType(id: string, vendorType: VendorType): Promise<VendorTypeResult> {
   const { data } = await api.put<ApiResponse<VendorTypeResult>>(`/vendors/admin/${id}/vendor-type`, {
     vendor_type: vendorType,
+  })
+  return data.data
+}
+
+export interface VendorOfferingInput {
+  offering: VendorOffering
+  /** Blank/null clears the plan label. */
+  pos_plan_name?: string | null
+  /** YYYY-MM-DD, blank/null clears it. */
+  pos_valid_to?: string | null
+}
+
+export interface VendorOfferingResult {
+  offering: VendorOffering
+  pos_onboarding_status: PosOnboardingStatus
+  pos_plan_name: string | null
+  pos_valid_to: string | null
+  allowed_modes: Array<"MARKETPLACE" | "POS">
+}
+
+export async function adminSetVendorOffering(id: string, input: VendorOfferingInput): Promise<VendorOfferingResult> {
+  const { data } = await api.put<ApiResponse<VendorOfferingResult>>(`/vendors/admin/${id}/offering`, {
+    offering: input.offering,
+    pos_plan_name: input.pos_plan_name?.trim() ? input.pos_plan_name.trim() : null,
+    pos_valid_to: input.pos_valid_to?.trim() ? input.pos_valid_to.trim() : null,
   })
   return data.data
 }

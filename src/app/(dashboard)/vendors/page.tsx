@@ -9,6 +9,7 @@ import { useVendorsList } from "@/hooks/useShops"
 import { DashboardSearchBar } from "@/components/dashboard/DashboardSearchBar"
 import { StatCard } from "@/components/dashboard/StatCard"
 import { VendorTypeBadge } from "@/components/vendors/VendorTypeControl"
+import { VendorOfferingBadge } from "@/components/vendors/VendorOfferingControl"
 import { Button } from "@/components/ui/button"
 import { 
   Layers, 
@@ -279,6 +280,7 @@ function VendorsPageInner() {
                   <th className="py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Capacity Today</th>
                   <th className="py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Acceptance</th>
                   <th className="py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
+                  <th className="py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">App access</th>
                   <th className="py-3.5 px-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
@@ -304,7 +306,7 @@ function VendorsPageInner() {
                 {/* Empty State */}
                 {!isLoading && filteredVendors.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-16 px-4 text-center">
+                    <td colSpan={9} className="py-16 px-4 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
                         <Inbox className="h-10 w-10 text-slate-300" />
                         <h3 className="text-sm font-semibold text-slate-700">No matching vendors found</h3>
@@ -389,6 +391,9 @@ function VendorsPageInner() {
                         </td>
                         <td className="py-4 px-4">
                           <VendorTypeBadge type={v.vendor_type} />
+                        </td>
+                        <td className="py-4 px-4">
+                          <VendorOfferingBadge offering={v.offering} />
                         </td>
                         <td className="py-4 px-4">
                           <span
