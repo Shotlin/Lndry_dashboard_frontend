@@ -17,7 +17,7 @@ export interface GarmentTypeAdmin {
 export interface CreateGarmentTypePayload {
   name: string
   categoryId: string
-  unit: "kg" | "piece"
+  unit: "kg" | "piece" | "sqft"
   costPrice?: number
   thumbnailUrl?: string
   isActive?: boolean
@@ -26,7 +26,7 @@ export interface CreateGarmentTypePayload {
 export interface UpdateGarmentTypePayload {
   name?: string
   categoryId?: string
-  unit?: "kg" | "piece"
+  unit?: "kg" | "piece" | "sqft"
   costPrice?: number
   thumbnailUrl?: string
   isActive?: boolean

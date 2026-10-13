@@ -99,7 +99,7 @@ type CategoryForm = {
 type GarmentTypeForm = {
   name: string
   categoryId: string
-  unit: "kg" | "piece"
+  unit: "kg" | "piece" | "sqft"
   costPrice: string
   thumbnailUrl: string
   isActive: boolean
@@ -140,7 +140,7 @@ function createInitialGarmentTypeForm(
   return {
     name: garmentType?.name ?? "",
     categoryId: garmentType?.category_id ?? defaultCategoryId,
-    unit: (garmentType?.unit === "kg" ? "kg" : "piece") as "kg" | "piece",
+    unit: (garmentType?.unit === "kg" || garmentType?.unit === "sqft" ? garmentType.unit : "piece") as "kg" | "piece" | "sqft",
     costPrice: garmentType?.cost_price != null ? String(garmentType.cost_price) : "",
     thumbnailUrl: garmentType?.thumbnail_url ?? "",
     isActive: garmentType?.is_active ?? true,
@@ -558,7 +558,7 @@ export default function LaundryCategoriesPage() {
                         {gt.name}
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{gt.unit}</TableCell>
+                    <TableCell className="text-muted-foreground">{gt.unit === "sqft" ? "sq ft" : gt.unit}</TableCell>
                     <TableCell>{gt.cost_price != null ? `₹${gt.cost_price}` : "—"}</TableCell>
                     <TableCell>
                       <Badge variant={gt.is_active ? "default" : "secondary"}>
@@ -722,7 +722,7 @@ export default function LaundryCategoriesPage() {
                 <Label>Unit</Label>
                 <Select
                   value={gtForm.unit}
-                  onValueChange={(v) => setGtForm((f) => ({ ...f, unit: v as "kg" | "piece" }))}
+                  onValueChange={(v) => setGtForm((f) => ({ ...f, unit: v as "kg" | "piece" | "sqft" }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -730,6 +730,7 @@ export default function LaundryCategoriesPage() {
                   <SelectContent>
                     <SelectItem value="kg">kg</SelectItem>
                     <SelectItem value="piece">piece</SelectItem>
+                    <SelectItem value="sqft">sq ft</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
