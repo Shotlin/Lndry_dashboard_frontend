@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { use, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Store, Loader2, FileText, Eye, Zap } from "lucide-react"
 import { PageHeader } from "@/components/shared/PageHeader"
@@ -25,7 +25,8 @@ function DocumentStatusBadge({ status }: { status: string }) {
   return <Badge className="bg-muted text-muted-foreground border-0">PENDING</Badge>
 }
 
-export default function VendorDetailPage({ params }: { params: { vendorId: string } }) {
+export default function VendorDetailPage(props: { params: Promise<{ vendorId: string }> }) {
+  const params = use(props.params)
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("details")
   const { data: vendor, isLoading, isError } = useVendorDetails(params.vendorId)

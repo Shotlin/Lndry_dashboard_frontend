@@ -1,5 +1,5 @@
 /**
- * Unit tests for `src/middleware.ts` — auth gate.
+ * Unit tests for `src/proxy.ts` — auth gate.
  *
  * Validates: Requirements 1.6, 1.7 (preserve).
  */
@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest"
 import { NextRequest } from "next/server"
 
-import { middleware } from "@/middleware"
+import { proxy as middleware } from "@/proxy"
 
 interface MakeRequestOpts {
   pathname: string

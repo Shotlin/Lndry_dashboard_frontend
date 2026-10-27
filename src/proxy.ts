@@ -10,8 +10,15 @@ const COOKIE_AUTH_SESSION = "auth_session"
 const COOKIE_MFA_PENDING = "mfa_pending"
 const COOKIE_PASSWORD_CHANGE_REQUIRED = "password_change_required"
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // The Next.js image optimizer is disabled (see next.config.mjs) because of
+  // critical advisories on this Next version. Refuse the endpoint outright so it
+  // cannot be reached even by a hand-built request.
+  if (pathname.startsWith("/_next/image")) {
+    return new NextResponse(null, { status: 404 })
+  }
 
   // Skip Next.js internals, static files, and API routes
   if (
@@ -61,6 +68,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|favicon.ico).*)",
   ],
 }

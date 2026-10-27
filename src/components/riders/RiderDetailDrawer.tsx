@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { safeExternalUrl } from "@/lib/safe-url"
 import {
   Sheet,
   SheetContent,
@@ -436,7 +437,7 @@ export function RiderDetailDrawer({ riderId, open, onClose }: RiderDetailDrawerP
                         className="flex items-center justify-between p-2.5 bg-muted/50 rounded-lg"
                       >
                         <a
-                          href={doc.doc_url}
+                          href={safeExternalUrl(doc.doc_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 hover:underline"

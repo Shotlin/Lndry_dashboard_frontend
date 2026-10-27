@@ -44,8 +44,6 @@ import {
 import {
   useSettings,
   useUpdateSettings,
-  useStepUpSetting,
-  useSetStepUpSetting,
 } from "@/hooks/useSettings"
 import type { AppSettings, UpdateSettingsPayload } from "@/types/settings.types"
 import { usePermissions } from "@/hooks/usePermissions"
@@ -245,18 +243,6 @@ function SettingsContent() {
   // `/shop-financials`, `/shop-transactions`.
   const isSuperAdmin = useIsSuperAdmin()
 
-  // Two-Step Verification switch (persisted server-side)
-  const { data: stepUp, isLoading: stepUpLoading } = useStepUpSetting()
-  const setStepUp = useSetStepUpSetting()
-
-  // 2FA State
-  const [twoFaEnabled, setTwoFaEnabled] = useState(false)
-  const [twoFaSetupOpen, setTwoFaSetupOpen] = useState(false)
-  const [twoFaCode, setTwoFaCode] = useState("")
-  const [twoFaVerifying, setTwoFaVerifying] = useState(false)
-  const [twoFaSecret] = useState("JBSWY3DPEHPK3PXP") // Placeholder secret
-  const [twoFaVerified, setTwoFaVerified] = useState(false)
-
   // Sync incoming settings into draft
   useEffect(() => {
     if (!settings) return
@@ -432,180 +418,6 @@ function SettingsContent() {
           )
         })}
       </div>
-
-      {/* Two-Step Verification switch — controls whether protected admin
-          actions (fees, advance amount, settings…) ask for an authenticator
-          code. Persisted in the backend; the 2FA implementation is unchanged. */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            Security
-          </CardTitle>
-        </CardHeader>
-        <Separator />
-        <CardContent className="pt-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1 flex-1">
-              <p className="text-sm font-medium">Two-Step Verification</p>
-              <p className="text-xs text-muted-foreground">
-                When ON, protected actions (fees, advance payment, checkout
-                content, other settings) ask for an authenticator code. When
-                OFF, they save without any verification popup — use OFF only
-                while developing and turn it back ON before going live.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span
-                className={`text-xs font-semibold ${
-                  stepUp?.enabled ? "text-green-600" : "text-amber-600"
-                }`}
-              >
-                {stepUpLoading ? "…" : stepUp?.enabled ? "ON" : "OFF"}
-              </span>
-              <Switch
-                checked={stepUp?.enabled ?? false}
-                onCheckedChange={(v) => setStepUp.mutate(v)}
-                disabled={stepUpLoading || setStepUp.isPending || !canManage}
-                aria-label="Two-Step Verification"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 2FA Security Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-            Two-Factor Authentication (2FA)
-          </CardTitle>
-        </CardHeader>
-        <Separator />
-        <CardContent className="pt-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1 flex-1">
-              <p className="text-sm font-medium">Authenticator App</p>
-              <p className="text-xs text-muted-foreground">
-                Add an extra layer of security by requiring a TOTP code from an authenticator app (Google Authenticator, Authy, etc.) when signing in.
-              </p>
-              {twoFaEnabled && twoFaVerified && (
-                <div className="flex items-center gap-1.5 mt-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                  <span className="text-xs text-green-600 font-medium">2FA is active</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              {twoFaEnabled ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={() => { setTwoFaEnabled(false); setTwoFaVerified(false) }}
-                >
-                  Disable 2FA
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => setTwoFaSetupOpen(true)}
-                >
-                  <ShieldCheck className="h-4 w-4 mr-1.5" />
-                  Enable 2FA
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {twoFaEnabled && (
-            <div className="mt-4 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-1">
-              <p><strong>Recovery codes</strong> — store these somewhere safe. If you lose access to your authenticator app, you can use a recovery code to sign in.</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 mt-2 font-mono">
-                {["a4f2-k8m3", "b7j1-p9n4", "c5h6-q2r8", "d3g9-s1t7", "e8f4-u6v2", "f1d5-w3x9", "g7c8-y4z6", "h2b1-m5n3"].map((code) => (
-                  <span key={code} className="px-2 py-1 rounded bg-background border text-center text-[11px]">{code}</span>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* 2FA Setup Dialog */}
-      <Dialog open={twoFaSetupOpen} onOpenChange={setTwoFaSetupOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><QrCode className="h-5 w-5" /> Set Up 2FA</DialogTitle>
-            <DialogDescription>
-              Scan the QR code with your authenticator app, then enter the 6-digit verification code.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* QR Code placeholder */}
-            <div className="flex justify-center">
-              <div className="w-48 h-48 bg-muted rounded-lg border-2 border-dashed flex items-center justify-center">
-                <div className="text-center space-y-2">
-                  <QrCode className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <p className="text-[10px] text-muted-foreground">QR Code</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Manual key */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Or enter this key manually:</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  readOnly
-                  value={twoFaSecret}
-                  className="font-mono text-sm bg-muted"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  onClick={() => navigator.clipboard.writeText(twoFaSecret)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Verification */}
-            <div className="space-y-1">
-              <Label>Verification Code</Label>
-              <Input
-                placeholder="Enter 6-digit code"
-                value={twoFaCode}
-                onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                className="text-center text-lg font-mono tracking-widest"
-                maxLength={6}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setTwoFaSetupOpen(false); setTwoFaCode("") }}>Cancel</Button>
-            <Button
-              disabled={twoFaCode.length !== 6 || twoFaVerifying}
-              onClick={() => {
-                setTwoFaVerifying(true)
-                // Simulate verification
-                setTimeout(() => {
-                  setTwoFaVerifying(false)
-                  setTwoFaEnabled(true)
-                  setTwoFaVerified(true)
-                  setTwoFaSetupOpen(false)
-                  setTwoFaCode("")
-                }, 1200)
-              }}
-            >
-              {twoFaVerifying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Verify & Enable
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Sticky save bar */}
       {dirty && canManage && (

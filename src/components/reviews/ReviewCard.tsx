@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { safeExternalUrl } from "@/lib/safe-url"
 import { Star, CheckCircle, EyeOff, Flag, Trash2, MessageSquare, MoreHorizontal, Send } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -85,14 +86,18 @@ export function ReviewCard({ review, onReply, onModerate, onDelete, isReplying }
             {/* Photo Gallery */}
             {review.images && review.images.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-1">
-                {review.images.map((img, idx) => (
+                {review.images.map((rawImg, idx) => {
+                  const img = safeExternalUrl(rawImg)
+                  if (!img) return null
+                  return (
                   <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="block">
                     <div className="h-16 w-16 rounded-md overflow-hidden border bg-muted hover:ring-2 hover:ring-primary/40 transition-all">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={img} alt={`Review photo ${idx + 1}`} className="h-full w-full object-cover" />
                     </div>
                   </a>
-                ))}
+                  )
+                })}
               </div>
             )}
             <p className="text-xs text-muted-foreground">

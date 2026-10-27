@@ -9,7 +9,8 @@ import React from "react"
 import fs from "fs"
 import path from "path"
 
-vi.mock("@/hooks/useCustomers", () => ({
+vi.mock("@/hooks/useCustomers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/hooks/useCustomers")>()),
   useCustomerDetail: () => ({
     data: {
       id: "cust-1",
@@ -23,6 +24,8 @@ vi.mock("@/hooks/useCustomers", () => ({
     isLoading: false,
   }),
   useCustomerOrders: () => ({ data: { orders: [] }, isLoading: false }),
+  useCustomerAddresses: () => ({ data: [], isLoading: false }),
+  useSetDefaultAddress: () => ({ mutate: vi.fn(), isPending: false }),
   useToggleBlockCustomer: () => ({ mutate: vi.fn(), isPending: false }),
   useNotifyCustomer: () => ({ mutate: vi.fn(), isPending: false }),
 }))

@@ -26,16 +26,28 @@ export function useSocket() {
 export function SocketProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null)
   const token = useAuthStore((s) => s.accessToken)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const mfaPending = useAuthStore((s) => s.mfaPending)
 
   useEffect(() => {
-    if (!token) return
+    // After a page reload the in-memory token is empty and the session lives in
+    // the httpOnly cookie, so "signed in" — not "token present" — is the condition.
+    if (!isAuthenticated || mfaPending) return
 
     const s = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
       // Re-evaluate the token on every (re)connect so a refreshed/rotated
       // access token is picked up automatically (Req 11.1, 11.6). socket.io-client
       // invokes the function form as `auth(cb)` on each reconnect attempt, so we
       // must call `cb(...)` rather than returning the payload.
-      auth: (cb) => cb({ token: localStorage.getItem("accessToken") ?? "" }),
+      //
+      // The token comes from the auth store. It used to be read from
+      // localStorage, which nothing writes any more, so the socket always
+      // connected with an EMPTY token and was rejected — live order/admin
+      // events never reached the dashboard. When the in-memory token is empty
+      // (after a reload) the browser sends the httpOnly session cookie instead
+      // (withCredentials), which the API accepts for sockets too.
+      auth: (cb) => cb({ token: useAuthStore.getState().accessToken ?? "" }),
+      withCredentials: true,
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -165,7 +177,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       s.disconnect()
       setSocket(null)
     }
-  }, [token])
+  }, [isAuthenticated, mfaPending, token])
 
   return (
     <SocketContext.Provider value={socket}>

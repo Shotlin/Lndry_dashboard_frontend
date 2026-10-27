@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
+import { resolveRedirectTarget } from "@/lib/safe-redirect"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -29,12 +30,6 @@ function LoginPageFallback() {
       </div>
     </div>
   )
-}
-
-function resolveRedirectTarget(raw: string | null): string {
-  if (!raw) return "/dashboard"
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/dashboard"
-  return raw
 }
 
 function LoginPageContent() {
@@ -150,7 +145,7 @@ function LoginPageContent() {
           <div>
             <h2 className="text-[28px] font-bold tracking-tight text-[#0f172a]">Admin sign in</h2>
             <p className="text-[14px] text-[#64748b] mt-2 leading-relaxed">
-              Use your authorised operations account. A second factor is required after password verification.
+              Sign in with your authorised operations account.
             </p>
           </div>
 
@@ -213,17 +208,10 @@ function LoginPageContent() {
                   Signing in...
                 </>
               ) : (
-                "Continue to second factor"
+                "Sign in"
               )}
             </Button>
           </form>
-
-          <div className="rounded-2xl border border-[#e8e8ef] bg-white p-4 shadow-[0_1px_3px_rgba(42,36,95,0.04)]">
-            <h3 className="text-[13px] font-bold text-[#0f172a]">Security requirement</h3>
-            <p className="text-[12px] text-[#64748b] mt-1.5 leading-relaxed">
-              TOTP authenticator preferred. Secure fallback is available only when enabled.
-            </p>
-          </div>
         </div>
       </div>
     </div>

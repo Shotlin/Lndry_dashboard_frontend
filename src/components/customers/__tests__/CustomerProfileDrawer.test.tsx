@@ -4,6 +4,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import type { ReactNode } from "react"
+
+// The drawer's address section uses react-query internally.
+const withQuery = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{children}</QueryClientProvider>
+)
 
 class ResizeObserverStub {
   observe(): void {}
@@ -33,11 +40,15 @@ if (
 const useCustomerDetailMock = vi.fn()
 const useCustomerOrdersMock = vi.fn()
 
-vi.mock("@/hooks/useCustomers", () => {
+vi.mock("@/hooks/useCustomers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/hooks/useCustomers")>()
   const stub = () => ({ mutate: vi.fn(), isPending: false })
   return {
+    ...actual,
     useCustomerDetail: (...args: unknown[]) => useCustomerDetailMock(...args),
     useCustomerOrders: (...args: unknown[]) => useCustomerOrdersMock(...args),
+    useCustomerAddresses: () => ({ data: [], isLoading: false }),
+    useSetDefaultAddress: stub,
     useToggleBlockCustomer: stub,
     useNotifyCustomer: stub,
   }
@@ -99,6 +110,7 @@ describe("<CustomerProfileDrawer />", () => {
         open
         onClose={() => {}}
       />,
+      { wrapper: withQuery },
     )
 
     expect(screen.queryByText(/404 — Customer not found/i)).toBeNull()
@@ -114,6 +126,7 @@ describe("<CustomerProfileDrawer />", () => {
         open
         onClose={() => {}}
       />,
+      { wrapper: withQuery },
     )
 
     expect(screen.queryByText(/404 — Customer not found/i)).toBeNull()

@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useState, useRef, useCallback } from "react"
+import { resolveRedirectTarget } from "@/lib/safe-redirect"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -18,12 +19,6 @@ function Verify2faFallback() {
       </div>
     </div>
   )
-}
-
-function resolveRedirectTarget(raw: string | null): string {
-  if (!raw) return "/dashboard"
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/dashboard"
-  return raw
 }
 
 function Verify2faPageContent() {

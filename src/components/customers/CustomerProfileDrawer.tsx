@@ -188,14 +188,14 @@ export function CustomerProfileDrawer({ customerId, open, onClose }: CustomerPro
 
                   {/* Stats */}
                   <div className="grid grid-cols-4 gap-2.5">
-                    <StatBox icon={<ShoppingBag className="h-4 w-4" />} label="Orders" value={customer.order_count.toString()} />
-                    <StatBox icon={<Wallet className="h-4 w-4" />} label="Spent" value={formatINR(customer.total_spent)} />
-                    <StatBox icon={<Star className="h-4 w-4" />} label="Points" value={customer.loyalty_points.toString()} />
+                    <StatBox icon={<ShoppingBag className="h-4 w-4" />} label="Orders" value={String(customer.order_count ?? 0)} />
+                    <StatBox icon={<Wallet className="h-4 w-4" />} label="Spent" value={formatINR(customer.total_spent ?? 0)} />
+                    <StatBox icon={<Star className="h-4 w-4" />} label="Points" value={String(customer.loyalty_points ?? 0)} />
                     <StatBox
                       icon={<XCircle className="h-4 w-4" />}
                       label="Cancelled"
-                      value={customer.cancelled_count.toString()}
-                      tone={customer.cancelled_count > 0 ? "warn" : undefined}
+                      value={String(customer.cancelled_count ?? 0)}
+                      tone={(customer.cancelled_count ?? 0) > 0 ? "warn" : undefined}
                     />
                   </div>
 

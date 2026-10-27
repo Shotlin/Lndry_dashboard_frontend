@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { safeExternalUrl } from "@/lib/safe-url"
 import { ExternalLink, Star, Unlink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -122,7 +123,7 @@ export function GoogleBusinessControl({ vendorId, vendor }: { vendorId: string; 
         </Button>
         {isConnected && (
           <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs" asChild>
-            <a href={vendor.google_business_url ?? "#"} target="_blank" rel="noopener noreferrer">
+            <a href={safeExternalUrl(vendor.google_business_url) ?? "#"} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3 w-3" />
               View on Google
             </a>

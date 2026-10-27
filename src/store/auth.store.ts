@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   stepUpCancel: null,
 
   login: (user, token, requires2FA = false) => {
-    // Set session cookie for Next.js middleware
+    // Set session cookie for Next.js proxy (proxy.ts)
     document.cookie = `auth_session=1; path=/; max-age=${TWENTY_DAYS_SECONDS}; samesite=lax`
     
     if (requires2FA) {
