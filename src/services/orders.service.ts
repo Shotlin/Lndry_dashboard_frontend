@@ -141,3 +141,15 @@ export async function downloadPackingSlip(orderId: string) {
   })
   return response.data
 }
+
+/** Refund all or part of one payment — Razorpay for online payments, wallet for wallet payments. */
+export async function refundOrderPayment(
+  orderId: string,
+  paymentId: string,
+  payload: { amount?: number; reason?: string }
+) {
+  const { data } = await api.post<
+    ApiResponse<{ refundId: string; refundAmount: number; totalRefunded: number; fullyRefunded: boolean; destination: string }>
+  >(`/admin/orders/${orderId}/payments/${paymentId}/refund`, payload)
+  return data.data
+}

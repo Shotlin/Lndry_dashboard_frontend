@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Loader2, AlertCircle, Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react"
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,6 +46,8 @@ const APPROVAL_STYLES: Record<string, string> = {
   REJECTED: "bg-danger-bg text-danger border-0",
 }
 
+type RateDraft = { price?: string; available?: boolean }
+
 function GarmentRatesPanel({ vendorId, serviceId }: { vendorId: string; serviceId: string }) {
   const { data, isLoading } = useVendorServiceDetailsAdmin(vendorId, serviceId)
   const addRate = useAddGarmentRateAdmin(vendorId)
@@ -52,40 +55,99 @@ function GarmentRatesPanel({ vendorId, serviceId }: { vendorId: string; serviceI
   const deleteRate = useDeleteGarmentRateAdmin(vendorId)
   const [newGarmentName, setNewGarmentName] = useState("")
   const [newRate, setNewRate] = useState("")
+  // Edits stay here until "Save changes" is pressed; nothing is sent while typing.
+  const [drafts, setDrafts] = useState<Record<string, RateDraft>>({})
+  const [saving, setSaving] = useState(false)
 
   if (isLoading) {
     return <div className="flex items-center gap-2 text-sm text-muted-foreground py-4"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading rates…</div>
   }
 
+  const garments = data?.garments ?? []
+  const setDraft = (id: string, patch: RateDraft) => setDrafts((d) => ({ ...d, [id]: { ...d[id], ...patch } }))
+
+  // Only fields that really differ from what is saved count as a change.
+  const changes = garments.flatMap((g) => {
+    const d = drafts[g.garment_rate_id]
+    if (!d) return []
+    const payload: { rate_paise?: number; is_available?: boolean } = {}
+    if (d.price !== undefined) {
+      const rupees = parseFloat(d.price)
+      if (!Number.isNaN(rupees) && Math.round(rupees * 100) !== g.rate_paise) payload.rate_paise = Math.round(rupees * 100)
+    }
+    if (d.available !== undefined && d.available !== g.is_available) payload.is_available = d.available
+    return Object.keys(payload).length ? [{ id: g.garment_rate_id, name: g.garment_name, payload }] : []
+  })
+  const invalidPrice = garments.some((g) => {
+    const p = drafts[g.garment_rate_id]?.price
+    return p !== undefined && (p.trim() === "" || Number.isNaN(parseFloat(p)) || parseFloat(p) < 0)
+  })
+
+  const saveAll = async () => {
+    setSaving(true)
+    const failed: string[] = []
+    for (const c of changes) {
+      try {
+        await updateRate.mutateAsync({ serviceId, garmentTypeId: c.id, payload: c.payload })
+      } catch {
+        failed.push(c.name)
+      }
+    }
+    setSaving(false)
+    if (failed.length) {
+      toast.error(`Could not save: ${failed.join(", ")}. The other changes were saved.`)
+      setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => failed.includes(garments.find((g) => g.garment_rate_id === id)?.garment_name ?? ""))))
+    } else {
+      toast.success(`${changes.length} change${changes.length === 1 ? "" : "s"} saved`)
+      setDrafts({})
+    }
+  }
+
   return (
     <div className="space-y-2 pt-2">
-      {data?.garments.map((g) => (
-        <div key={g.garment_rate_id} className="flex items-center justify-between p-2.5 rounded-lg border bg-background text-sm">
-          <span className="font-medium">{g.garment_name} <span className="text-muted-foreground font-normal">/ {g.unit}</span></span>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">₹</span>
-            <Input
-              type="number"
-              defaultValue={(g.rate_paise / 100).toFixed(2)}
-              className="h-8 w-24"
-              onBlur={(e) => {
-                const rupees = parseFloat(e.target.value)
-                if (!Number.isNaN(rupees)) {
-                  updateRate.mutate({ serviceId, garmentTypeId: g.garment_rate_id, payload: { rate_paise: Math.round(rupees * 100) } })
-                }
-              }}
-            />
-            <Switch
-              checked={g.is_available}
-              onCheckedChange={(checked) => updateRate.mutate({ serviceId, garmentTypeId: g.garment_rate_id, payload: { is_available: checked } })}
-            />
-            <Button variant="ghost" size="sm" className="h-8 px-2 text-danger hover:text-danger" onClick={() => deleteRate.mutate({ serviceId, garmentTypeId: g.garment_rate_id })}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+      <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/40 px-3 py-2">
+        <span className="text-xs text-muted-foreground">
+          {changes.length ? `${changes.length} unsaved change${changes.length === 1 ? "" : "s"}` : "Edit prices or availability, then press Save."}
+        </span>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="h-8" disabled={!changes.length || saving} onClick={() => setDrafts({})}>
+            Discard
+          </Button>
+          <Button size="sm" className="h-8" disabled={!changes.length || invalidPrice || saving} onClick={saveAll}>
+            {saving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+            Save changes
+          </Button>
         </div>
-      ))}
-      {(!data || data.garments.length === 0) && <p className="text-xs text-muted-foreground py-2">No garment rates yet.</p>}
+      </div>
+
+      {garments.map((g) => {
+        const d = drafts[g.garment_rate_id]
+        const dirty = changes.some((c) => c.id === g.garment_rate_id)
+        return (
+          <div key={g.garment_rate_id} className={`flex items-center justify-between p-2.5 rounded-lg border bg-background text-sm ${dirty ? "border-brand-500/60" : ""}`}>
+            <span className="font-medium">{g.garment_name} <span className="text-muted-foreground font-normal">/ {g.unit}</span></span>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">₹</span>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={d?.price ?? (g.rate_paise / 100).toFixed(2)}
+                className="h-8 w-24"
+                onChange={(e) => setDraft(g.garment_rate_id, { price: e.target.value })}
+              />
+              <Switch
+                checked={d?.available ?? g.is_available}
+                onCheckedChange={(checked) => setDraft(g.garment_rate_id, { available: checked })}
+              />
+              <Button variant="ghost" size="sm" className="h-8 px-2 text-danger hover:text-danger" onClick={() => deleteRate.mutate({ serviceId, garmentTypeId: g.garment_rate_id })}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )
+      })}
+      {garments.length === 0 && <p className="text-xs text-muted-foreground py-2">No garment rates yet.</p>}
 
       <div className="flex items-center gap-2 pt-1">
         <Input placeholder="Garment name (e.g. Shirt)" value={newGarmentName} onChange={(e) => setNewGarmentName(e.target.value)} className="h-8 flex-1" />

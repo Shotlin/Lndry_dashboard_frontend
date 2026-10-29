@@ -66,11 +66,13 @@ export interface Order {
 export interface OrderItem {
   id?: string
   order_id?: string
-  product_id: string
+  product_id?: string
   name: string
   price: number
   quantity: number
-  unit: string
+  estimated_quantity?: number | null
+  confirmed_quantity?: number | null
+  unit: string | null
   total: number
   thumbnail_url?: string | null
   created_at?: string
@@ -120,6 +122,44 @@ export interface DeliveryAssignment {
   rating_note: string | null
 }
 
+export interface OrderPaymentEntry {
+  id: string
+  purpose: "FULL" | "ADVANCE" | "BALANCE" | string
+  status: "PENDING" | "PAID" | "FAILED" | "REFUNDED" | string
+  method: string | null
+  amount: number
+  currency: string
+  razorpay_order_id: string | null
+  razorpay_payment_id: string | null
+  paid_at: string | null
+  created_at: string
+  failure_reason: string | null
+  refunded_amount: number
+  refundable_amount: number
+  refunds: { id: string; amount: number; reason: string; destination: string; at: string }[]
+}
+
+export interface OrderFinancials {
+  total: number
+  paid: number
+  refunded: number
+  net_paid: number
+  balance_due: number
+  payment_state: "UNPAID" | "PARTIALLY_PAID" | "PAID" | "PARTIALLY_REFUNDED" | "REFUNDED"
+  /** Assisted bookings: the price is confirmed after inspection, so `total` is an estimate. */
+  is_estimate: boolean
+  breakdown: {
+    subtotal: number
+    discount: number
+    delivery_fee: number
+    platform_fee: number
+    handling_fee: number
+    late_night_fee: number
+    tax: number
+    tip: number
+  }
+}
+
 export interface OrderDetail extends Order {
   customer_name: string
   customer_phone: string
@@ -131,7 +171,15 @@ export interface OrderDetail extends Order {
   items: OrderItem[]
   timeline: OrderTimeline[]
   payment: OrderPayment | null
+  payments?: OrderPaymentEntry[]
+  financials?: OrderFinancials
   delivery: DeliveryAssignment | null
+  booking_type?: "STANDARD" | "ASSISTED"
+  estimated_weight?: number | null
+  actual_weight?: number | null
+  pickup_date?: string | null
+  vendor_delivery_slot_label?: string | null
+  created_at: string
 }
 
 /** Order count by status (for tab badges) */

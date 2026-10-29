@@ -9,6 +9,7 @@ import {
   exportOrdersCsv,
   downloadInvoice,
   refundOrder,
+  refundOrderPayment,
   cancelOrder,
   bulkUpdateStatus,
   downloadPackingSlip,
@@ -145,6 +146,23 @@ export function useRefundOrder() {
       refundOrder(orderId, payload),
     onSuccess: () => {
       toast.success("Refund processed successfully")
+      qc.invalidateQueries({ queryKey: ["orders"] })
+    },
+    onError: (e: Error) => toast.error(e.message || "Refund failed"),
+  })
+}
+
+export function useRefundOrderPayment(orderId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ paymentId, amount, reason }: { paymentId: string; amount?: number; reason?: string }) =>
+      refundOrderPayment(orderId, paymentId, { amount, reason }),
+    onSuccess: (r) => {
+      toast.success(
+        r.destination === "WALLET"
+          ? `₹${r.refundAmount.toFixed(2)} refunded to the customer's wallet`
+          : `₹${r.refundAmount.toFixed(2)} refund sent to Razorpay (${r.refundId})`
+      )
       qc.invalidateQueries({ queryKey: ["orders"] })
     },
     onError: (e: Error) => toast.error(e.message || "Refund failed"),

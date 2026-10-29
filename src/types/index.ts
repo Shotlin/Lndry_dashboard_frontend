@@ -21,6 +21,8 @@ export type {
   OrderTimeline,
   OrderDetail,
   OrderPayment,
+  OrderPaymentEntry,
+  OrderFinancials,
   DeliveryAssignment,
   DeliveryAddress,
   OrderStatusCounts,
