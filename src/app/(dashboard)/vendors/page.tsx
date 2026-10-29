@@ -184,6 +184,12 @@ function VendorsPageInner() {
             className="w-full sm:w-64"
           />
           <Button
+            onClick={() => router.push("/vendors/new")}
+            className="bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg h-10 px-4 text-xs"
+          >
+            Add vendor
+          </Button>
+          <Button
             onClick={handleExport}
             disabled={filteredVendors.length === 0 || isExporting || isLoading}
             variant="outline"

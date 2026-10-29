@@ -2,7 +2,10 @@
 
 import { use, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Store, Loader2, FileText, Eye, Zap } from "lucide-react"
+import { ArrowLeft, Store, Loader2, FileText, Eye, Zap, Trash2, Upload } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { adminUploadVendorDocument, adminDeleteVendorDocument, KYC_DOCUMENT_TYPES } from "@/services/vendors.service"
 import { PageHeader } from "@/components/shared/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -32,6 +35,32 @@ export default function VendorDetailPage(props: { params: Promise<{ vendorId: st
   const { data: vendor, isLoading, isError } = useVendorDetails(params.vendorId)
   const setExpressPickup = useSetExpressPickup(params.vendorId)
   const [previewDocId, setPreviewDocId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const [docType, setDocType] = useState<string>(KYC_DOCUMENT_TYPES[0].value)
+  const [docBusy, setDocBusy] = useState(false)
+  const refreshVendor = () => queryClient.invalidateQueries({ queryKey: ["vendors", "detail", params.vendorId] })
+  const uploadDoc = async (file?: File) => {
+    if (!file) return
+    setDocBusy(true)
+    try {
+      await adminUploadVendorDocument(params.vendorId, docType, file)
+      toast.success("Document uploaded")
+      refreshVendor()
+    } catch (e) {
+      toast.error((e as Error).message || "Upload failed")
+    } finally {
+      setDocBusy(false)
+    }
+  }
+  const removeDoc = async (id: string) => {
+    try {
+      await adminDeleteVendorDocument(params.vendorId, id)
+      toast.success("Document removed")
+      refreshVendor()
+    } catch (e) {
+      toast.error((e as Error).message || "Could not remove document")
+    }
+  }
   const previewDoc = vendor?.documents.find((d) => d.id === previewDocId)
 
   return (
@@ -136,6 +165,24 @@ export default function VendorDetailPage(props: { params: Promise<{ vendorId: st
                     <CardDescription>KYC verification and license attachments</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {vendor.status === "APPROVED" && (
+                      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed p-3">
+                        <select
+                          value={docType}
+                          onChange={(e) => setDocType(e.target.value)}
+                          className="h-9 rounded-md border bg-background px-2 text-sm"
+                        >
+                          {KYC_DOCUMENT_TYPES.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
+                        </select>
+                        <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md bg-brand-600 px-3 text-sm font-semibold text-white hover:bg-brand-700">
+                          {docBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          Upload
+                          <input type="file" accept="image/*,application/pdf" className="sr-only" disabled={docBusy}
+                            onChange={(e) => { uploadDoc(e.target.files?.[0]); e.target.value = "" }} />
+                        </label>
+                        <span className="text-xs text-muted-foreground">Uploading again replaces the earlier file of that type.</span>
+                      </div>
+                    )}
                     {vendor.documents.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-8 text-center">No documents uploaded.</p>
                     ) : (
@@ -161,6 +208,11 @@ export default function VendorDetailPage(props: { params: Promise<{ vendorId: st
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              {vendor.status === "APPROVED" && (
+                                <Button variant="ghost" size="sm" className="h-8 px-2 text-danger hover:text-danger" onClick={() => removeDoc(doc.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}

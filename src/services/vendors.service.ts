@@ -320,3 +320,57 @@ export async function adminUpdatePickupSlot(
 export async function adminDeletePickupSlot(id: string, slotId: string): Promise<void> {
   await api.delete(`/vendors/admin/${id}/slots/${slotId}`)
 }
+
+export interface AdminCreateVendorInput {
+  phone: string
+  name: string
+  owner_name: string
+  email?: string
+  description?: string
+  address_line1: string
+  address_line2?: string
+  city: string
+  state: string
+  pincode: string
+  lat: number
+  lng: number
+  gst_number?: string
+  pan_number?: string
+  bank_account_number?: string
+  bank_ifsc?: string
+  bank_name?: string
+  bank_holder_name?: string
+  service_radius_km?: number
+  daily_capacity?: number
+}
+
+/** Creates and approves a vendor directly; the owner signs in with `phone`. */
+export async function adminCreateVendor(input: AdminCreateVendorInput): Promise<{ id: string; name: string }> {
+  const { data } = await api.post<ApiResponse<{ id: string; name: string }>>("/vendors/admin/create", input)
+  return data.data
+}
+
+export const KYC_DOCUMENT_TYPES = [
+  { value: "owner_identity", label: "Owner ID proof" },
+  { value: "shop_photo", label: "Shop photo" },
+  { value: "service_list", label: "Service / price list" },
+  { value: "gst_certificate", label: "GST certificate" },
+  { value: "pan_card", label: "PAN card" },
+  { value: "bank_proof", label: "Bank proof / cancelled cheque" },
+  { value: "shop_license", label: "Shop licence" },
+] as const
+
+/** `document_type` must be appended before `file` (multipart parser reads fields in stream order). */
+export async function adminUploadVendorDocument(vendorId: string, documentType: string, file: File) {
+  const formData = new FormData()
+  formData.append("document_type", documentType)
+  formData.append("file", file)
+  const { data } = await api.post<ApiResponse<{ id: string }>>(`/vendors/admin/${vendorId}/documents`, formData, {
+    timeout: 2 * 60 * 1000,
+  })
+  return data.data
+}
+
+export async function adminDeleteVendorDocument(vendorId: string, documentId: string) {
+  await api.delete(`/vendors/admin/${vendorId}/documents/${documentId}`)
+}
