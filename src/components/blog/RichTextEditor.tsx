@@ -3,12 +3,7 @@
 import { useRef, useState } from "react"
 import type { Editor } from "@tiptap/react"
 import { EditorContent, useEditor } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Image from "@tiptap/extension-image"
-import Placeholder from "@tiptap/extension-placeholder"
-import TextAlign from "@tiptap/extension-text-align"
-import CharacterCount from "@tiptap/extension-character-count"
-import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table"
+import { blogEditorExtensions } from "./blog-extensions"
 import {
   AlignCenter,
   AlignLeft,
@@ -105,20 +100,7 @@ export function RichTextEditor({ initialHtml, onChange, onError }: Props) {
   const editor = useEditor({
     immediatelyRender: false,
     shouldRerenderOnTransaction: true,
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3, 4] },
-        link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
-      }),
-      Image.configure({ allowBase64: false }),
-      Placeholder.configure({ placeholder: "Start writing your article… Use H2 headings for the main sections." }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      CharacterCount,
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
-    ],
+    extensions: blogEditorExtensions,
     content: initialHtml || "",
     editorProps: {
       attributes: {
