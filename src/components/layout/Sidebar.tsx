@@ -54,7 +54,7 @@ type NavItem = {
   label: string
   href: string
   icon: string
-  badgeKey?: "pendingOrders" | "pendingApplications" | "exceptionsCount"
+  badgeKey?: "pendingOrders" | "pendingApplications" | "pendingServices" | "exceptionsCount"
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -94,7 +94,7 @@ const NAV_SECTIONS: Array<{ section: string; items: NavItem[] }> = [
     items: [
       { id: "dashboard", label: "Overview", href: "/dashboard", icon: "LayoutDashboard" },
       { id: "vendorApplications", label: "Vendor applications", href: "/vendor-applications", badgeKey: "pendingApplications", icon: "FileText" },
-      { id: "vendors", label: "Vendors", href: "/vendors", icon: "Store" },
+      { id: "vendors", label: "Vendors", href: "/vendors", badgeKey: "pendingServices", icon: "Store" },
       { id: "customers", label: "Customers", href: "/customers", icon: "Users" },
       { id: "orders", label: "Orders", href: "/orders", badgeKey: "pendingOrders", icon: "ClipboardList" },
       { id: "exceptions", label: "Exceptions", href: "/exceptions", badgeKey: "exceptionsCount", icon: "AlertTriangle" },
@@ -143,6 +143,8 @@ function NavSectionItem({
   isCollapsed,
   badgeCount,
 }: NavSectionItemProps) {
+  // Vendor service requests need a person to act, so they get an attention-red badge.
+  const urgent = item.badgeKey === "pendingServices"
   const isActive = isPathActive(pathname, item.href)
 
   const Icon = ICON_MAP[item.icon]
@@ -171,7 +173,13 @@ function NavSectionItem({
       )}
       {!isCollapsed && <span className="flex-1 truncate">{item.label}</span>}
       {!isCollapsed && badgeCount > 0 && (
-        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-white/15 px-1.5 text-[10px] font-bold text-white">
+        <span
+          className={cn(
+            "ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white",
+            urgent ? "bg-red-500 shadow-[0_0_0_3px_rgba(239,68,68,0.25)]" : "bg-white/15"
+          )}
+          title={urgent ? `${badgeCount} vendor service request${badgeCount === 1 ? "" : "s"} to review` : undefined}
+        >
           {badgeCount > 99 ? "99+" : badgeCount}
         </span>
       )}
@@ -243,6 +251,7 @@ export function Sidebar() {
   const badgeCounts: Record<string, number> = {
     pendingOrders: pendingActions?.pendingOrders ?? 0,
     pendingApplications: pendingActions?.pendingApplications ?? 0,
+    pendingServices: pendingActions?.pendingServices ?? 0,
     exceptionsCount: pendingActions?.exceptionsCount ?? 0,
   }
 

@@ -63,6 +63,8 @@ export function usePendingActions() {
     queryKey: ["dashboard-home", "pending-actions"] as const,
     queryFn: getPendingActions,
     staleTime: 30 * 1000,
+    // New vendor requests should light the red badge without a page reload.
+    refetchInterval: 60 * 1000,
     placeholderData: (prev) => prev,
   })
 }

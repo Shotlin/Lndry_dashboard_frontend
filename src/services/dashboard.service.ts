@@ -143,11 +143,13 @@ export async function getLowStockAlerts(threshold: number = 10): Promise<LowStoc
 export async function getPendingActions(): Promise<{
   pendingOrders: number
   pendingApplications: number
+  /** Vendor-submitted services waiting for admin review. */
+  pendingServices: number
   exceptionsCount: number
   pendingRiderApprovals: number
 }> {
   try {
-    const [statsRes, vendorsRes] = await Promise.all([
+    const [statsRes, vendorsRes, servicesRes] = await Promise.all([
       api.get<ApiResponse<{
         pending_orders?: number
         confirmed_orders?: number
@@ -157,17 +159,22 @@ export async function getPendingActions(): Promise<{
       }>>(`/admin/dashboard/pending-actions`),
       api.get<ApiResponse<{ total: number }>>(`/vendors/admin/list`, {
         params: { status: "PENDING", limit: 1 }
+      }).catch(() => ({ data: { data: { total: 0 } } })),
+      api.get<ApiResponse<{ total: number }>>(`/vendors/admin/services`, {
+        params: { status: "PENDING", limit: 1 }
       }).catch(() => ({ data: { data: { total: 0 } } }))
     ])
     
     const raw = statsRes.data.data
     const pendingApplications = vendorsRes.data?.data?.total ?? 0
+    const pendingServices = servicesRes.data?.data?.total ?? 0
     // Exceptions Count is the sum of WAITING_VENDOR_CONFIRMATION orders and pending payouts
     const exceptionsCount = (raw.pending_orders ?? 0) + (raw.pending_payouts ?? 0)
 
     return {
       pendingOrders: raw.pending_orders ?? 0,
       pendingApplications,
+      pendingServices,
       exceptionsCount,
       pendingRiderApprovals: raw.pending_riders ?? 0,
     }
@@ -175,6 +182,7 @@ export async function getPendingActions(): Promise<{
     return {
       pendingOrders: 0,
       pendingApplications: 0,
+      pendingServices: 0,
       exceptionsCount: 0,
       pendingRiderApprovals: 0,
     }

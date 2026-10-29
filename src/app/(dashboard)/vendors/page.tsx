@@ -8,6 +8,8 @@ import { useCsvExport } from "@/hooks/useCsvExport"
 import { useVendorsList } from "@/hooks/useShops"
 import { DashboardSearchBar } from "@/components/dashboard/DashboardSearchBar"
 import { StatCard } from "@/components/dashboard/StatCard"
+import { ServiceRequestsPanel } from "@/components/vendors/ServiceRequestsPanel"
+import { usePendingActions } from "@/hooks/useDashboard"
 import { VendorTypeBadge } from "@/components/vendors/VendorTypeControl"
 import { VendorOfferingBadge } from "@/components/vendors/VendorOfferingControl"
 import { Button } from "@/components/ui/button"
@@ -159,7 +161,11 @@ function VendorsPageInner() {
     )
   }
 
+  const { data: pending } = usePendingActions()
+  const pendingServices = pending?.pendingServices ?? 0
+
   const tabs = [
+    { key: "requests", label: "Service requests", count: pendingServices },
     { key: "active", label: "Active", count: counts.active },
     { key: "suspended", label: "Suspended", count: counts.suspended },
     { key: "inactive", label: "Inactive", count: counts.inactive },
@@ -241,10 +247,12 @@ function VendorsPageInner() {
                 {tab.label}
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold transition-all duration-200 ${
-                    isActive ? "bg-brand-100 text-brand-700" : "bg-slate-100 text-slate-500"
+                    tab.key === "requests" && tab.count > 0
+                      ? "bg-red-500 text-white"
+                      : isActive ? "bg-brand-100 text-brand-700" : "bg-slate-100 text-slate-500"
                   }`}
                 >
-                  {isLoading ? "..." : tab.count}
+                  {tab.key !== "requests" && isLoading ? "..." : tab.count}
                 </span>
               </span>
             </button>
@@ -252,8 +260,10 @@ function VendorsPageInner() {
         })}
       </div>
 
+      {activeTab === "requests" && <ServiceRequestsPanel />}
+
       {/* Error Boundary / Failure State */}
-      {error && (
+      {activeTab !== "requests" && error && (
         <div className="flex flex-col items-center justify-center p-12 bg-white border border-red-100 rounded-xl shadow-sm space-y-4">
           <ShieldAlert className="h-12 w-12 text-red-500 animate-bounce" />
           <div className="text-center">
@@ -273,7 +283,7 @@ function VendorsPageInner() {
       )}
 
       {/* Vendors Table Card */}
-      {!error && (
+      {activeTab !== "requests" && !error && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">

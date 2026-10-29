@@ -23,8 +23,10 @@
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96.1%; /* soft slate #f1f5f9 */
     --secondary-foreground: 243 75% 59%;
-    --muted: 215 16% 47%; /* muted #64748B */
-    --muted-foreground: 215 16% 47%;
+    /* `muted` is a SURFACE (bg-muted: tiles, table bodies, icon chips, code chips).
+       It must be light; the slate text gray lives on --muted-foreground only. */
+    --muted: 240 14% 95.5%; /* soft indigo-tinted surface #F2F2F7 */
+    --muted-foreground: 215 16% 40%; /* text gray, a touch darker for readability #566274 */
     --accent: 240 10% 97%; /* page bg tint */
     --accent-foreground: 243 75% 59%;
     --destructive: 354 70% 53%; /* danger Red #EF4444 */
