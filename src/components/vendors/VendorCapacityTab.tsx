@@ -38,7 +38,7 @@ import {
   useUpdatePickupSlot,
   useDeletePickupSlot,
 } from "@/hooks/useVendorCapacity"
-import { adminCreatePickupSlot } from "@/services/vendors.service"
+import { adminCreatePickupSlot, adminUpdatePickupSlot } from "@/services/vendors.service"
 import type { VendorCapacity } from "@/services/vendors.service"
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -74,6 +74,13 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
     max_orders: "5",
   })
   const [isBulkGenerating, setIsBulkGenerating] = useState(false)
+
+  // "Set max orders for all" — editing every slot's limit one at a time via
+  // the pencil icon is impractical once a vendor has a full week of slots;
+  // this applies one value to every existing slot in a single action.
+  const [bulkMaxOpen, setBulkMaxOpen] = useState(false)
+  const [bulkMaxValue, setBulkMaxValue] = useState("10")
+  const [isBulkMaxSaving, setIsBulkMaxSaving] = useState(false)
 
   if (isLoading) {
     return (
@@ -233,6 +240,32 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
     }
   }
 
+  async function submitBulkMax() {
+    const maxOrders = parseInt(bulkMaxValue, 10)
+    const slots = capacity?.weekly_availability
+    if (!(maxOrders > 0) || !slots?.length) return
+
+    setIsBulkMaxSaving(true)
+    let updated = 0
+    let failed = 0
+    for (const slot of slots) {
+      try {
+        await adminUpdatePickupSlot(vendorId, slot.id, { max_orders: maxOrders })
+        updated += 1
+      } catch {
+        failed += 1
+      }
+    }
+    setIsBulkMaxSaving(false)
+    setBulkMaxOpen(false)
+    queryClient.invalidateQueries({ queryKey: ["vendor-capacity", vendorId] })
+    if (failed === 0) {
+      toast.success(`Max orders set to ${maxOrders} on ${updated} slot${updated === 1 ? "" : "s"}`)
+    } else {
+      toast.error(`${updated} slot${updated === 1 ? "" : "s"} updated, ${failed} failed`)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -312,6 +345,15 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
               <CardDescription>Per-slot order limits</CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button
+                onClick={() => { setBulkMaxValue("10"); setBulkMaxOpen(true) }}
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={!capacity.weekly_availability?.length}
+              >
+                <Pencil className="h-4 w-4" /> Set max orders for all
+              </Button>
               <Button onClick={openBulkGenerate} size="sm" variant="outline" className="gap-1.5">
                 <Zap className="h-4 w-4" /> Generate slots
               </Button>
@@ -433,6 +475,30 @@ export function VendorCapacityTab({ vendorId }: { vendorId: string }) {
             <Button variant="outline" onClick={() => setSlotDialogOpen(false)}>Cancel</Button>
             <Button onClick={submitSlot} disabled={createSlot.isPending || updateSlot.isPending}>
               {createSlot.isPending || updateSlot.isPending ? "Saving…" : editingSlot ? "Save changes" : "Add slot"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk set max orders */}
+      <Dialog open={bulkMaxOpen} onOpenChange={setBulkMaxOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set max orders for all slots</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>Max orders per slot</Label>
+              <Input type="number" min={1} value={bulkMaxValue} onChange={(e) => setBulkMaxValue(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Applies to all {capacity.weekly_availability?.length ?? 0} existing slot(s). Slots added later keep their own default.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkMaxOpen(false)}>Cancel</Button>
+            <Button onClick={submitBulkMax} disabled={isBulkMaxSaving || !(parseInt(bulkMaxValue, 10) > 0)}>
+              {isBulkMaxSaving ? "Saving…" : "Apply to all slots"}
             </Button>
           </DialogFooter>
         </DialogContent>

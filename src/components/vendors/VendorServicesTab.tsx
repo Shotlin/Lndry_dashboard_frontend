@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, AlertCircle, Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react"
+import { Loader2, AlertCircle, Plus, ChevronDown, ChevronUp, Trash2, Pencil } from "lucide-react"
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
@@ -183,6 +183,8 @@ export function VendorServicesTab({ vendorId }: { vendorId: string }) {
   const [addOpen, setAddOpen] = useState(false)
   const [addForm, setAddForm] = useState({ category_id: "", price: "" })
   const [deleteTarget, setDeleteTarget] = useState<VendorCatalogueService | null>(null)
+  const [editTarget, setEditTarget] = useState<VendorCatalogueService | null>(null)
+  const [editForm, setEditForm] = useState({ name: "", price: "", min_weight_kg: "" })
 
   if (isLoading) {
     return (
@@ -218,6 +220,34 @@ export function VendorServicesTab({ vendorId }: { vendorId: string }) {
           setAddForm({ category_id: "", price: "" })
         },
       }
+    )
+  }
+
+  function openEditService(svc: VendorCatalogueService) {
+    setEditTarget(svc)
+    setEditForm({
+      name: svc.name,
+      price: (svc.price_per_piece / 100).toFixed(2),
+      min_weight_kg: String(svc.min_weight_kg),
+    })
+  }
+
+  function submitEditService() {
+    if (!editTarget) return
+    const name = editForm.name.trim()
+    if (!name) return
+    const rupees = parseFloat(editForm.price)
+    const minWeight = parseFloat(editForm.min_weight_kg)
+    updateService.mutate(
+      {
+        serviceId: editTarget.id,
+        payload: {
+          name,
+          price_per_piece: Number.isNaN(rupees) ? undefined : Math.round(rupees * 100),
+          min_weight_kg: Number.isNaN(minWeight) ? undefined : minWeight,
+        },
+      },
+      { onSuccess: () => setEditTarget(null) }
     )
   }
 
@@ -263,6 +293,9 @@ export function VendorServicesTab({ vendorId }: { vendorId: string }) {
                           />
                           <span className="text-xs text-muted-foreground w-14">{svc.is_available ? "Active" : "Hidden"}</span>
                         </div>
+                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => openEditService(svc)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" className="h-8 px-2 text-danger hover:text-danger" onClick={() => setDeleteTarget(svc)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -307,6 +340,34 @@ export function VendorServicesTab({ vendorId }: { vendorId: string }) {
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={submitAdd} disabled={!addForm.category_id || createService.isPending}>
               {createService.isPending ? "Adding…" : "Add service"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit service */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit service</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>Service name</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Laundry Service" />
+            </div>
+            <div className="space-y-1">
+              <Label>Base price (₹)</Label>
+              <Input type="number" min={0} step="0.01" value={editForm.price} onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Minimum weight (kg)</Label>
+              <Input type="number" min={0} step="0.1" value={editForm.min_weight_kg} onChange={(e) => setEditForm((f) => ({ ...f, min_weight_kg: e.target.value }))} />
+            </div>
+            <p className="text-xs text-muted-foreground">Admin edits apply immediately and stay approved.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button onClick={submitEditService} disabled={!editForm.name.trim() || updateService.isPending}>
+              {updateService.isPending ? "Saving…" : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
